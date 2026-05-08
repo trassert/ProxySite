@@ -7,3 +7,4 @@ uv.lock
 .ruff_cache
 
 pnpm-lock.yaml
+data/proxies.db
