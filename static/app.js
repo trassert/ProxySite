@@ -58,7 +58,7 @@ async function vote(proxyId, voteType) {
   btn.classList.add('loading');
 
   try {
-    const response = await fetch('/api/vote', {
+    const response = await fetch('./api/vote', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -214,7 +214,7 @@ async function loadUserVotes() {
     if (!proxyId) continue;
 
     try {
-      const response = await fetch(`/api/vote/${proxyId}`);
+      const response = await fetch(`./api/vote/${proxyId}`);
       const data = await response.json();
 
       if (data.vote) {
@@ -273,7 +273,7 @@ async function submitAddProxy() {
   if (btn) btn.classList.add('loading');
 
   try {
-    const response = await fetch('/api/add-proxy', {
+    const response = await fetch('./api/add-proxy', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -334,7 +334,7 @@ async function checkPing(proxyId) {
   `;
 
   try {
-    const response = await fetch(`/api/ping/${proxyId}`, { method: 'POST' });
+    const response = await fetch(`./api/ping/${proxyId}`, { method: 'POST' });
     const data = await response.json();
 
     badge.className = `ping-badge ${data.status}`;
