@@ -21,6 +21,16 @@ dev = [
     "ruff>=0.7.0",
 ]
 
+[[tool.uv.index]]
+name = "termux-pydantic"
+url = "https://termux-user-repository.github.io/pypi/pydantic-core/"
+format = "flat"
+explicit = true
+
+[tool.uv.sources]
+pydantic-core = [
+    { index = "termux-pydantic", marker = "platform_machine == 'aarch64' and sys_platform == 'linux'" }
+]
 
 [tool.ruff]
 exclude = ["depr", "scripts", ".venv"]
