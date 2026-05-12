@@ -29,7 +29,7 @@ explicit = true
 
 [tool.uv.sources]
 pydantic-core = [
-    { index = "termux-pydantic", marker = "platform_machine == 'aarch64' and sys_platform == 'linux'" }
+    { index = "termux-pydantic", marker = "sys_platform == 'android'" },
 ]
 
 [tool.ruff]
