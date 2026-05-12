@@ -28,9 +28,18 @@ url = "https://termux-user-repository.github.io/pypi/pydantic-core/"
 format = "flat"
 explicit = true
 
+[[tool.uv.index]]
+name = "termux-watchfiles"
+url = "https://termux-user-repository.github.io/pypi/watchfiles/"
+format = "flat"
+explicit = true
+
 [tool.uv.sources]
 pydantic-core = [
     { index = "termux-pydantic", marker = "sys_platform == 'android'" },
+]
+watchfiles = [
+    { index = "termux-watchfiles", marker = "sys_platform == 'android'" },
 ]
 
 [tool.ruff]
