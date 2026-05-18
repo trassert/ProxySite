@@ -28,7 +28,6 @@ class PingChecker:
     """Async ping checker using MTProto Proxy-get request."""
 
     TIMEOUT: float = 5.0
-    # MTProto Proxy-get magic bytes
     PROXY_GET_REQUEST = b"\x00\x01\x00\x01\x00\x00\x00\x00"
 
     @classmethod
@@ -40,7 +39,6 @@ class PingChecker:
         Returns PingResult with status based on connection success and latency.
         """
         tcp_ok, ping_ms = await cls._proxy_get_check(server, port, secret)
-
         if tcp_ok:
             if ping_ms is not None and ping_ms <= PING_OK_THRESHOLD:
                 status = PingStatus.OK
@@ -51,7 +49,6 @@ class PingChecker:
         else:
             status = PingStatus.FAILED
             ping_ms = None
-
         return PingResult(
             ping_ms=ping_ms,
             status=status,
@@ -69,26 +66,18 @@ class PingChecker:
         Returns (success, time_ms).
         """
         loop = asyncio.get_event_loop()
-
+        reader = None
+        writer = None
         try:
             start = loop.time()
-
-            _, writer = await asyncio.wait_for(
+            reader, writer = await asyncio.wait_for(
                 asyncio.open_connection(server, port),
                 timeout=cls.TIMEOUT,
             )
-
-            # Build MTProto Proxy-get request
-            # Format: dd (magic) + 4 bytes padding + 4 bytes timestamp
             secret_bytes = bytes.fromhex(secret) if secret else b""
-
-            # If secret starts with domain fronting prefix (ee...), handle it
             if secret_bytes.startswith(b"\xee"):
-                # Domain fronting: ee + 4 bytes domain len + domain + rest
                 request = cls.PROXY_GET_REQUEST
             else:
-                # Standard secret - use as padding
-                # MTProto expects: magic(4) + random_padding(up to 512) + timestamp(4)
                 padding = (
                     secret_bytes[:56]
                     if len(secret_bytes) >= 32
@@ -96,34 +85,24 @@ class PingChecker:
                 )
                 timestamp = struct.pack(">I", int(time.time()))
                 request = cls.PROXY_GET_REQUEST + padding + timestamp
-
             writer.write(request)
             await writer.drain()
-
-            # Read response (MTProto proxy responds with same structure)
             response = await asyncio.wait_for(
-                writer.read(8),
+                reader.readexactly(8),
                 timeout=cls.TIMEOUT,
             )
-
             end = loop.time()
             ping_ms = int((end - start) * 1000)
-
-            # Validate response - should start with same magic or 0x00
             if len(response) >= 4 and response[0:2] == b"\x00\x01":
                 success = True
             elif len(response) >= 4:
-                # Some proxies respond with different but valid response
                 success = True
             else:
                 success = False
-
             writer.close()
             await writer.wait_closed()
-
             if not success:
                 return False, None
-
         except (
             TimeoutError,
             ConnectionRefusedError,
