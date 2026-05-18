@@ -63,6 +63,7 @@ class Database:
                 likes INTEGER DEFAULT 0,
                 dislikes INTEGER DEFAULT 0,
                 ping_ms INTEGER,
+                tcp_ping_ms INTEGER,
                 ping_status TEXT DEFAULT 'pending',
                 tcp_ok INTEGER DEFAULT 0,
                 dns_ok INTEGER DEFAULT 0,
@@ -76,9 +77,6 @@ class Database:
             CREATE INDEX IF NOT EXISTS idx_proxies_dislikes ON proxies(dislikes DESC);
             CREATE INDEX IF NOT EXISTS idx_proxies_ping ON proxies(ping_ms);
             CREATE INDEX IF NOT EXISTS idx_proxies_created ON proxies(created_at DESC);
-
-            -- Add is_fallback column if it doesn't exist (for existing databases)
-            ALTER TABLE proxies ADD COLUMN is_fallback INTEGER DEFAULT 0;
 
             CREATE TABLE IF NOT EXISTS votes (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -126,6 +124,7 @@ class Database:
         tcp_ok: bool,
         dns_ok: bool,
         is_fallback: bool = False,
+        tcp_ping_ms: int | None = None,
     ) -> None:
         """Update proxy ping status."""
         if not self._connection:
@@ -136,10 +135,10 @@ class Database:
         await self._connection.execute(
             """
             UPDATE proxies
-            SET ping_ms = ?, ping_status = ?, tcp_ok = ?, dns_ok = ?, is_fallback = ?, last_checked = ?
+            SET ping_ms = ?, ping_status = ?, tcp_ok = ?, dns_ok = ?, is_fallback = ?, tcp_ping_ms = ?, last_checked = ?
             WHERE id = ?
             """,
-            (ping_ms, ping_status.value, int(tcp_ok), int(dns_ok), int(is_fallback), now, proxy_id),
+            (ping_ms, ping_status.value, int(tcp_ok), int(dns_ok), int(is_fallback), tcp_ping_ms, now, proxy_id),
         )
         await self._connection.commit()
 
@@ -306,6 +305,7 @@ class Database:
         tcp_ok: bool,
         dns_ok: bool,
         is_fallback: bool = False,
+        tcp_ping_ms: int | None = None,
     ) -> None:
         """Update proxy ping status."""
         if not self._connection:
@@ -316,10 +316,10 @@ class Database:
         await self._connection.execute(
             """
             UPDATE proxies
-            SET ping_ms = ?, ping_status = ?, tcp_ok = ?, dns_ok = ?, is_fallback = ?, last_checked = ?
+            SET ping_ms = ?, ping_status = ?, tcp_ok = ?, dns_ok = ?, is_fallback = ?, tcp_ping_ms = ?, last_checked = ?
             WHERE id = ?
             """,
-            (ping_ms, ping_status.value, int(tcp_ok), int(dns_ok), int(is_fallback), now, proxy_id),
+            (ping_ms, ping_status.value, int(tcp_ok), int(dns_ok), int(is_fallback), tcp_ping_ms, now, proxy_id),
         )
         await self._connection.commit()
 
@@ -420,11 +420,11 @@ class Database:
         stats_row = await cursor2.fetchone()
 
         return {
-            "total_proxies": row["total"],
-            "total_likes": row["total_likes"],
-            "total_dislikes": row["total_dislikes"],
+            "total_proxies": row["total"] or 0,
+            "total_likes": row["total_likes"] or 0,
+            "total_dislikes": row["total_dislikes"] or 0,
             "avg_ping_ms": round(row["avg_ping"], 1) if row["avg_ping"] else None,
-            "online_count": row["online"],
+            "online_count": row["online"] or 0,
             "last_cleanup": datetime.fromisoformat(stats_row["last_cleanup"])
             if stats_row and stats_row["last_cleanup"]
             else None,
