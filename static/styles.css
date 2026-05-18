@@ -396,6 +396,17 @@ html.dark .ping-badge.warning {
   color: var(--md-sys-color-on-surface-variant);
 }
 
+/* Fallback badge - TCP only (purple like Add Proxy button with warning icon) */
+.ping-badge.fallback {
+  background: var(--md-sys-color-tertiary-container);
+  color: var(--md-sys-color-on-tertiary-container);
+}
+
+html.dark .ping-badge.fallback {
+  background: var(--md-sys-color-tertiary);
+  color: var(--md-sys-color-on-tertiary);
+}
+
 .proxy-secret {
   font-family: 'SF Mono', 'Fira Code', monospace;
   font-size: 0.75rem;

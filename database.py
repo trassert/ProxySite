@@ -66,6 +66,7 @@ class Database:
                 ping_status TEXT DEFAULT 'pending',
                 tcp_ok INTEGER DEFAULT 0,
                 dns_ok INTEGER DEFAULT 0,
+                is_fallback INTEGER DEFAULT 0,
                 created_at TEXT NOT NULL,
                 last_checked TEXT,
                 UNIQUE(server, port, secret)
@@ -75,6 +76,9 @@ class Database:
             CREATE INDEX IF NOT EXISTS idx_proxies_dislikes ON proxies(dislikes DESC);
             CREATE INDEX IF NOT EXISTS idx_proxies_ping ON proxies(ping_ms);
             CREATE INDEX IF NOT EXISTS idx_proxies_created ON proxies(created_at DESC);
+
+            -- Add is_fallback column if it doesn't exist (for existing databases)
+            ALTER TABLE proxies ADD COLUMN is_fallback INTEGER DEFAULT 0;
 
             CREATE TABLE IF NOT EXISTS votes (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -113,6 +117,31 @@ class Database:
             if row["last_checked"]
             else None,
         )
+
+    async def update_ping(
+        self,
+        proxy_id: int,
+        ping_ms: int | None,
+        ping_status: PingStatus,
+        tcp_ok: bool,
+        dns_ok: bool,
+        is_fallback: bool = False,
+    ) -> None:
+        """Update proxy ping status."""
+        if not self._connection:
+            msg = "Database not connected"
+            raise RuntimeError(msg)
+
+        now = datetime.utcnow().isoformat()
+        await self._connection.execute(
+            """
+            UPDATE proxies
+            SET ping_ms = ?, ping_status = ?, tcp_ok = ?, dns_ok = ?, is_fallback = ?, last_checked = ?
+            WHERE id = ?
+            """,
+            (ping_ms, ping_status.value, int(tcp_ok), int(dns_ok), int(is_fallback), now, proxy_id),
+        )
+        await self._connection.commit()
 
     async def add_proxy(self, proxy: ProxyBase) -> ProxyInDB | None:
         """Add a new proxy. Returns None if duplicate."""
@@ -167,10 +196,12 @@ class Database:
             SortBy.LIKES: "likes - dislikes DESC, likes DESC",
             SortBy.PING: """
                 CASE
-                    WHEN ping_status = 'ok' THEN 0
-                    WHEN ping_status = 'warning' THEN 1
-                    WHEN ping_status = 'failed' THEN 2
-                    ELSE 3
+                    WHEN ping_status = 'ok' AND is_fallback = 0 THEN 0
+                    WHEN ping_status = 'ok' AND is_fallback = 1 THEN 1
+                    WHEN ping_status = 'warning' AND is_fallback = 0 THEN 2
+                    WHEN ping_status = 'warning' AND is_fallback = 1 THEN 3
+                    WHEN ping_status = 'failed' THEN 4
+                    ELSE 5
                 END ASC,
                 CASE WHEN ping_ms IS NULL THEN 999999 ELSE ping_ms END ASC
             """,
@@ -274,6 +305,7 @@ class Database:
         ping_status: PingStatus,
         tcp_ok: bool,
         dns_ok: bool,
+        is_fallback: bool = False,
     ) -> None:
         """Update proxy ping status."""
         if not self._connection:
@@ -284,10 +316,10 @@ class Database:
         await self._connection.execute(
             """
             UPDATE proxies
-            SET ping_ms = ?, ping_status = ?, tcp_ok = ?, dns_ok = ?, last_checked = ?
+            SET ping_ms = ?, ping_status = ?, tcp_ok = ?, dns_ok = ?, is_fallback = ?, last_checked = ?
             WHERE id = ?
             """,
-            (ping_ms, ping_status.value, int(tcp_ok), int(dns_ok), now, proxy_id),
+            (ping_ms, ping_status.value, int(tcp_ok), int(dns_ok), int(is_fallback), now, proxy_id),
         )
         await self._connection.commit()
 

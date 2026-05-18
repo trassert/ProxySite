@@ -1,6 +1,7 @@
 """
 Ping checker for MTProto proxies.
 Uses MTProto Proxy-get request for accurate availability check.
+Falls back to basic TCP check if proxy-get fails.
 """
 
 import asyncio
@@ -22,10 +23,11 @@ class PingResult:
     status: PingStatus
     tcp_ok: bool
     dns_ok: bool
+    is_fallback: bool  # True if TCP fallback was used
 
 
 class PingChecker:
-    """Async ping checker using MTProto Proxy-get request."""
+    """Async ping checker using MTProto Proxy-get request with TCP fallback."""
 
     TIMEOUT: float = 5.0
     PROXY_GET_REQUEST = b"\x00\x01\x00\x01\x00\x00\x00\x00"
@@ -36,25 +38,68 @@ class PingChecker:
     ) -> PingResult:
         """
         Check proxy availability using MTProto Proxy-get request.
+        Falls back to basic TCP check if proxy-get fails.
         Returns PingResult with status based on connection success and latency.
         """
-        tcp_ok, ping_ms = await cls._proxy_get_check(server, port, secret)
-        if tcp_ok:
+        # First try proxy-get check
+        proxy_get_ok, ping_ms = await cls._proxy_get_check(server, port, secret)
+        
+        if proxy_get_ok:
+            # Proxy-get succeeded, use this result
             if ping_ms is not None and ping_ms <= PING_OK_THRESHOLD:
                 status = PingStatus.OK
             elif ping_ms is not None and ping_ms <= PING_WARNING_THRESHOLD:
                 status = PingStatus.OK
             else:
                 status = PingStatus.WARNING
-        else:
-            status = PingStatus.FAILED
-            ping_ms = None
+            return PingResult(
+                ping_ms=ping_ms,
+                status=status,
+                tcp_ok=True,
+                dns_ok=True,
+                is_fallback=False,
+            )
+        
+        # Proxy-get failed, try TCP fallback
+        tcp_ok = await cls._tcp_check(server, port)
+        
+        if tcp_ok:
+            # TCP connection succeeded but proxy-get failed
+            status = PingStatus.WARNING  # Mark as warning since proxy-get failed
+            return PingResult(
+                ping_ms=None,  # No accurate ping for TCP-only check
+                status=status,
+                tcp_ok=True,
+                dns_ok=False,  # DNS/proxy protocol didn't work
+                is_fallback=True,
+            )
+        
+        # Both checks failed
         return PingResult(
-            ping_ms=ping_ms,
-            status=status,
-            tcp_ok=tcp_ok,
-            dns_ok=tcp_ok,
+            ping_ms=None,
+            status=PingStatus.FAILED,
+            tcp_ok=False,
+            dns_ok=False,
+            is_fallback=False,
         )
+
+    @classmethod
+    async def _tcp_check(cls, server: str, port: int) -> bool:
+        """
+        Perform basic TCP connectivity check.
+        Just tries to establish a connection without sending any data.
+        Returns True if connection succeeds.
+        """
+        try:
+            reader, writer = await asyncio.wait_for(
+                asyncio.open_connection(server, port),
+                timeout=cls.TIMEOUT,
+            )
+            writer.close()
+            await writer.wait_closed()
+            return True
+        except (TimeoutError, ConnectionRefusedError, OSError):
+            return False
 
     @classmethod
     async def _proxy_get_check(

@@ -76,6 +76,7 @@ class ProxyInDB(ProxyBase):
     ping_status: PingStatus = PingStatus.PENDING
     tcp_ok: bool = False
     dns_ok: bool = False
+    is_fallback: bool = False
     created_at: datetime
     last_checked: datetime | None = None
 
