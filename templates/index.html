@@ -145,6 +145,13 @@
               <svg class="icon" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
               Copy
             </button>
+            <button 
+              class="link-btn" 
+              onclick="showQRCode('{{ proxy.server }}', '{{ proxy.port }}', '{{ proxy.secret }}')"
+            >
+              <svg class="icon" viewBox="0 0 24 24"><path d="M3 3h8v8H3V3m2 2v4h4V5H5m8-2h8v8h-8V3m2 2v4h4V5h-4M3 13h8v8H3v-8m2 2v4h4v-4H5m10-4h2v2h-2v-2m0 4h2v2h-2v-2m4-4h2v2h-2v-2m0 4h2v2h-2v-2m-4-4h2v2h-2v-2m0 4h2v2h-2v-2m4-4h2v2h-2v-2m0 4h2v2h-2v-2"/></svg>
+              QR
+            </button>
           </div>
         </div>
       </article>
@@ -227,6 +234,21 @@
     </div>
   </div>
 
+  <!-- QR Code Dialog -->
+  <div id="qr-dialog" class="dialog-backdrop">
+    <div class="dialog qr-dialog">
+      <h2 class="dialog-title">Proxy QR Code</h2>
+      <div class="qr-content">
+        <div id="qr-code-container"></div>
+        <p class="qr-hint">Scan this QR code with Telegram to connect to the proxy</p>
+      </div>
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-filled" onclick="closeDialog('qr-dialog')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
   <script src="./static/app.js"></script>
 </body>
 </html>
