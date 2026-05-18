@@ -1,39 +1,46 @@
-```
-# Database files
-*.db
-
-# Environment
-.env
-.env.local
-*.env.*
-
-# Dependencies
-.venv/
-venv/
-node_modules/
-
-# Build artifacts
-dist/
-build/
-target/
-
 # Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 .Python
-*.so
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
 
 # Logs
 *.log
 
-# Temporary files
-*.tmp
-*.temp
-*~
+# Coverage
+.coverage
+coverage/
+htmlcov/
 
-# OS generated files
+# Environment
+.env
+.env.local
+.env.*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.tmp
+
+# OS
 .DS_Store
 Thumbs.db
-```
+
+# Build
+build/
+dist/
+*.egg-info/
+
+pnpm-lock.yaml
+yarn.lock
+uv.lock
+.ruff_cache
+data
