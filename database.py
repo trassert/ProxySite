@@ -77,9 +77,6 @@ class Database:
             CREATE INDEX IF NOT EXISTS idx_proxies_ping ON proxies(ping_ms);
             CREATE INDEX IF NOT EXISTS idx_proxies_created ON proxies(created_at DESC);
 
-            -- Add is_fallback column if it doesn't exist (for existing databases)
-            ALTER TABLE proxies ADD COLUMN is_fallback INTEGER DEFAULT 0;
-
             CREATE TABLE IF NOT EXISTS votes (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 proxy_id INTEGER NOT NULL,
