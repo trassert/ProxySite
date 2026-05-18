@@ -325,6 +325,46 @@ class Database:
             return proxy_id
         return None
 
+    async def delete_old_failed_proxies(self, days: int = 5) -> int:
+        """
+        Delete proxies that have been in FAILED status for more than specified days.
+        Returns count of deleted proxies.
+        """
+        if not self._connection:
+            msg = "Database not connected"
+            raise RuntimeError(msg)
+
+        from datetime import timedelta
+
+        cutoff = (datetime.utcnow() - timedelta(days=days)).isoformat()
+
+        cursor = await self._connection.execute(
+            """
+            SELECT id FROM proxies
+            WHERE ping_status = 'failed'
+              AND last_checked IS NOT NULL
+              AND last_checked < ?
+            """,
+            (cutoff,),
+        )
+        rows = await cursor.fetchall()
+        deleted_count = 0
+
+        for row in rows:
+            proxy_id = row["id"]
+            await self._connection.execute(
+                "DELETE FROM proxies WHERE id = ?", (proxy_id,)
+            )
+            deleted_count += 1
+
+        if deleted_count > 0:
+            await self._connection.commit()
+            now = datetime.utcnow().isoformat()
+            await self._connection.execute("UPDATE stats SET last_cleanup = ?", (now,))
+            await self._connection.commit()
+
+        return deleted_count
+
     async def get_stats(self) -> dict:
         """Get aggregate statistics."""
         if not self._connection:
@@ -360,9 +400,9 @@ class Database:
 
     async def get_all_for_ping(
         self, skip_failed_hours: int = 2
-    ) -> list[tuple[int, str, int]]:
+    ) -> list[tuple[int, str, int, str]]:
         """
-        Get proxies for ping checking. Returns (id, server, port).
+        Get proxies for ping checking. Returns (id, server, port, secret).
         Skips proxies that failed recently (within skip_failed_hours) to avoid spamming dead proxies.
         """
         if not self._connection:
@@ -376,7 +416,7 @@ class Database:
 
         cursor = await self._connection.execute(
             """
-            SELECT id, server, port FROM proxies
+            SELECT id, server, port, secret FROM proxies
             WHERE ping_status != 'failed'
                OR last_checked IS NULL
                OR last_checked < ?
@@ -384,7 +424,7 @@ class Database:
             (cutoff,),
         )
         rows = await cursor.fetchall()
-        return [(row["id"], row["server"], row["port"]) for row in rows]
+        return [(row["id"], row["server"], row["port"], row["secret"]) for row in rows]
 
 
 db = Database()

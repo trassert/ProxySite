@@ -34,13 +34,17 @@ ping_task: asyncio.Task | None = None
 
 
 async def cleanup_worker() -> None:
-    """Background worker that removes most disliked proxy every 30 minutes."""
+    """Background worker that removes most disliked proxy and old failed proxies every 30 minutes."""
     while True:
         await asyncio.sleep(30 * 60)
         try:
             deleted_id = await db.delete_most_disliked(min_dislikes=5)
             if deleted_id:
-                print(f"[Cleanup] Deleted proxy {deleted_id}")
+                print(f"[Cleanup] Deleted proxy {deleted_id} (most disliked)")
+            
+            deleted_count = await db.delete_old_failed_proxies(days=5)
+            if deleted_count:
+                print(f"[Cleanup] Deleted {deleted_count} proxies (failed for 5+ days)")
         except Exception as e:
             print(f"[Cleanup] Error: {e}")
 
@@ -50,8 +54,8 @@ async def ping_worker() -> None:
     while True:
         try:
             proxies = await db.get_all_for_ping()
-            for proxy_id, server, port in proxies:
-                result = await PingChecker.check(server, port)
+            for proxy_id, server, port, secret in proxies:
+                result = await PingChecker.check(server, port, secret)
                 await db.update_ping(
                     proxy_id=proxy_id,
                     ping_ms=result.ping_ms,
@@ -249,10 +253,10 @@ async def get_stats() -> StatsResponse:
     return StatsResponse(**stats)
 
 
-async def ping_proxy_async(proxy_id: int, server: str, port: int) -> None:
+async def ping_proxy_async(proxy_id: int, server: str, port: int, secret: str) -> None:
     """Background task to ping a newly added proxy."""
     try:
-        result = await PingChecker.check(server, port)
+        result = await PingChecker.check(server, port, secret)
         await db.update_ping(
             proxy_id=proxy_id,
             ping_ms=result.ping_ms,
@@ -284,7 +288,7 @@ async def add_proxy_api(data: dict) -> dict:
 
             for proxy in added_proxies:
                 asyncio.create_task(
-                    ping_proxy_async(proxy.id, proxy.server, proxy.port)
+                    ping_proxy_async(proxy.id, proxy.server, proxy.port, proxy.secret)
                 )
 
             return {
@@ -303,7 +307,7 @@ async def add_proxy_api(data: dict) -> dict:
 
                 if result:
                     asyncio.create_task(
-                        ping_proxy_async(result.id, result.server, result.port)
+                        ping_proxy_async(result.id, result.server, result.port, result.secret)
                     )
 
             except ValueError as e:
@@ -339,7 +343,7 @@ async def trigger_ping(proxy_id: int) -> dict:
     if not proxy:
         raise HTTPException(status_code=404, detail="Proxy not found")
 
-    result = await PingChecker.check(proxy.server, proxy.port)
+    result = await PingChecker.check(proxy.server, proxy.port, proxy.secret)
     await db.update_ping(
         proxy_id=proxy_id,
         ping_ms=result.ping_ms,
