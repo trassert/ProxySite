@@ -62,6 +62,7 @@ async def ping_worker() -> None:
                     ping_status=result.status,
                     tcp_ok=result.tcp_ok,
                     dns_ok=result.dns_ok,
+                    is_fallback=result.is_fallback,
                 )
                 await asyncio.sleep(0.5)
         except Exception as e:
@@ -263,6 +264,7 @@ async def ping_proxy_async(proxy_id: int, server: str, port: int, secret: str) -
             ping_status=result.status,
             tcp_ok=result.tcp_ok,
             dns_ok=result.dns_ok,
+            is_fallback=result.is_fallback,
         )
     except Exception as e:
         print(f"[Auto-ping] Error pinging proxy {proxy_id}: {e}")
@@ -352,6 +354,7 @@ async def trigger_ping(proxy_id: int) -> dict:
         ping_status=result.status,
         tcp_ok=result.tcp_ok,
         dns_ok=result.dns_ok,
+        is_fallback=result.is_fallback,
     )
 
     return {
@@ -359,6 +362,7 @@ async def trigger_ping(proxy_id: int) -> dict:
         "status": result.status.value,
         "tcp_ok": result.tcp_ok,
         "dns_ok": result.dns_ok,
+        "is_fallback": result.is_fallback,
     }
 
 

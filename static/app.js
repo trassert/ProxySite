@@ -90,6 +90,12 @@ async function vote(proxyId, voteType) {
           likeBtn.classList.remove('active');
         }
         showSnackbar(voteType === 'like' ? 'Liked!' : 'Disliked!');
+        
+        // Re-sort by likes immediately when liked
+        const currentSort = new URLSearchParams(window.location.search).get('sort') || 'likes';
+        if (currentSort === 'likes' && voteType === 'like') {
+          await refreshProxyList('likes');
+        }
       } else {
         showSnackbar(data.message || 'Already voted');
       }
@@ -337,19 +343,36 @@ async function checkPing(proxyId) {
     const response = await fetch(`./api/ping/${proxyId}`, { method: 'POST' });
     const data = await response.json();
 
-    badge.className = `ping-badge ${data.status}`;
+    // Determine badge class based on status and fallback
+    let badgeClass = data.status;
+    if (data.is_fallback) {
+      badgeClass = 'fallback';
+    }
+    badge.className = `ping-badge ${badgeClass}`;
 
     let statusIcon = '';
     let statusText = '';
 
     switch (data.status) {
       case 'ok':
-        statusIcon = '<path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>';
-        statusText = `${data.ping_ms}ms`;
+        if (data.is_fallback) {
+          // Fallback proxy - show warning icon with exclamation
+          statusIcon = '<path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>';
+          statusText = 'TCP OK';
+        } else {
+          statusIcon = '<path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>';
+          statusText = `${data.ping_ms || ''}ms`;
+        }
         break;
       case 'warning':
-        statusIcon = '<path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/>';
-        statusText = `${data.ping_ms}ms`;
+        if (data.is_fallback) {
+          // TCP fallback succeeded but proxy-get failed
+          statusIcon = '<path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>';
+          statusText = 'TCP Only';
+        } else {
+          statusIcon = '<path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/>';
+          statusText = `${data.ping_ms || ''}ms`;
+        }
         break;
       case 'failed':
         statusIcon = '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>';
@@ -370,7 +393,7 @@ async function checkPing(proxyId) {
     if (currentSort === 'ping') {
       await refreshProxyList('ping');
     } else {
-      showSnackbar(`Ping: ${data.status}`);
+      showSnackbar(data.is_fallback ? 'TCP fallback OK' : `Ping: ${data.status}`);
     }
   } catch (error) {
     badge.className = 'ping-badge failed';
@@ -445,19 +468,39 @@ function createProxyCard(proxy) {
   card.className = 'proxy-card';
   card.dataset.proxyId = proxy.id;
   
+  // Determine badge class based on status and fallback
+  let badgeClass = proxy.ping_status;
+  if (proxy.is_fallback) {
+    badgeClass = 'fallback';
+  }
+  
   let pingBadgeContent = '';
   switch (proxy.ping_status) {
     case 'ok':
-      pingBadgeContent = `
-        <svg class="icon" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
-        ${proxy.ping_ms}ms
-      `;
+      if (proxy.is_fallback) {
+        pingBadgeContent = `
+          <svg class="icon" viewBox="0 0 24 24"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
+          TCP OK
+        `;
+      } else {
+        pingBadgeContent = `
+          <svg class="icon" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
+          ${proxy.ping_ms}ms
+        `;
+      }
       break;
     case 'warning':
-      pingBadgeContent = `
-        <svg class="icon" viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/></svg>
-        ${proxy.ping_ms}ms
-      `;
+      if (proxy.is_fallback) {
+        pingBadgeContent = `
+          <svg class="icon" viewBox="0 0 24 24"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
+          TCP Only
+        `;
+      } else {
+        pingBadgeContent = `
+          <svg class="icon" viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/></svg>
+          ${proxy.ping_ms}ms
+        `;
+      }
       break;
     case 'failed':
       pingBadgeContent = `
@@ -477,7 +520,7 @@ function createProxyCard(proxy) {
       <div>
         <h2 class="proxy-server">${proxy.server}<span class="proxy-port">:${proxy.port}</span></h2>
       </div>
-      <button class="ping-badge ${proxy.ping_status}" onclick="checkPing(${proxy.id})" title="Click to refresh">
+      <button class="ping-badge ${badgeClass}" onclick="checkPing(${proxy.id})" title="Click to refresh">
         ${pingBadgeContent}
       </button>
     </div>
