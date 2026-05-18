@@ -399,15 +399,15 @@ html.dark .ping-badge.warning {
   color: var(--md-sys-color-on-surface-variant);
 }
 
-/* Fallback badge - TCP only (purple like Add Proxy button with warning icon) */
+/* Fallback badge - TCP only (match Add Proxy primary button) */
 .ping-badge.fallback {
-  background: var(--md-sys-color-tertiary-container);
-  color: var(--md-sys-color-on-tertiary-container);
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
 }
 
 html.dark .ping-badge.fallback {
-  background: var(--md-sys-color-tertiary);
-  color: var(--md-sys-color-on-tertiary);
+  background: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-primary);
 }
 
 .proxy-secret {
