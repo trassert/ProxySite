@@ -24,6 +24,7 @@ class PingResult:
     tcp_ok: bool
     dns_ok: bool
     is_fallback: bool  # True if TCP fallback was used
+    tcp_ping_ms: int | None = None  # TCP ping time when fallback is used
 
 
 class PingChecker:
@@ -61,17 +62,18 @@ class PingChecker:
             )
         
         # Proxy-get failed, try TCP fallback
-        tcp_ok = await cls._tcp_check(server, port)
+        tcp_ok, tcp_ping_ms = await cls._tcp_check(server, port)
         
         if tcp_ok:
             # TCP connection succeeded but proxy-get failed
             status = PingStatus.WARNING  # Mark as warning since proxy-get failed
             return PingResult(
-                ping_ms=None,  # No accurate ping for TCP-only check
+                ping_ms=tcp_ping_ms,  # Use TCP ping time
                 status=status,
                 tcp_ok=True,
                 dns_ok=False,  # DNS/proxy protocol didn't work
                 is_fallback=True,
+                tcp_ping_ms=tcp_ping_ms,
             )
         
         # Both checks failed
@@ -84,22 +86,26 @@ class PingChecker:
         )
 
     @classmethod
-    async def _tcp_check(cls, server: str, port: int) -> bool:
+    async def _tcp_check(cls, server: str, port: int) -> tuple[bool, int | None]:
         """
-        Perform basic TCP connectivity check.
-        Just tries to establish a connection without sending any data.
-        Returns True if connection succeeds.
+        Perform basic TCP connectivity check with ping measurement.
+        Tries to establish a connection and measures the time.
+        Returns (success, ping_ms).
         """
+        loop = asyncio.get_event_loop()
         try:
+            start = loop.time()
             reader, writer = await asyncio.wait_for(
                 asyncio.open_connection(server, port),
                 timeout=cls.TIMEOUT,
             )
+            end = loop.time()
+            ping_ms = int((end - start) * 1000)
             writer.close()
             await writer.wait_closed()
-            return True
+            return True, ping_ms
         except (TimeoutError, ConnectionRefusedError, OSError):
-            return False
+            return False, None
 
     @classmethod
     async def _proxy_get_check(
