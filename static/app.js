@@ -362,7 +362,16 @@ async function checkPing(proxyId) {
       ${statusText}
     `;
 
-    showSnackbar(`Ping: ${data.status}`);
+    // Update stats bar
+    await updateStats();
+
+    // Re-sort list if sorted by ping
+    const currentSort = new URLSearchParams(window.location.search).get('sort') || 'likes';
+    if (currentSort === 'ping') {
+      await refreshProxyList('ping');
+    } else {
+      showSnackbar(`Ping: ${data.status}`);
+    }
   } catch (error) {
     badge.className = 'ping-badge failed';
     badge.innerHTML = `
@@ -378,6 +387,153 @@ async function checkPing(proxyId) {
 // ============================================
 // QR Code
 // ============================================
+
+async function updateStats() {
+  try {
+    const response = await fetch('./api/stats');
+    const data = await response.json();
+    
+    // Update stat chips
+    const statChips = document.querySelectorAll('.stat-chip');
+    statChips.forEach(chip => {
+      const valueSpan = chip.querySelector('.value');
+      if (!valueSpan) return;
+      
+      if (chip.textContent.includes('proxies')) {
+        valueSpan.textContent = data.total_proxies;
+      } else if (chip.textContent.includes('likes')) {
+        valueSpan.textContent = data.total_likes;
+      } else if (chip.textContent.includes('online')) {
+        valueSpan.textContent = data.online_count || 0;
+      } else if (chip.textContent.includes('avg')) {
+        if (data.avg_ping_ms) {
+          valueSpan.textContent = `${data.avg_ping_ms}ms`;
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Failed to update stats:', error);
+  }
+}
+
+async function refreshProxyList(sortBy = 'likes') {
+  try {
+    const response = await fetch(`./api/proxies?sort=${sortBy}&limit=100`);
+    const data = await response.json();
+    
+    const proxyList = document.querySelector('.proxy-list');
+    if (!proxyList) return;
+    
+    // Clear current list
+    proxyList.innerHTML = '';
+    
+    // Render new proxies
+    data.proxies.forEach(proxy => {
+      const card = createProxyCard(proxy);
+      proxyList.appendChild(card);
+    });
+    
+    // Re-load user votes
+    await loadUserVotes();
+  } catch (error) {
+    console.error('Failed to refresh proxy list:', error);
+  }
+}
+
+function createProxyCard(proxy) {
+  const card = document.createElement('article');
+  card.className = 'proxy-card';
+  card.dataset.proxyId = proxy.id;
+  
+  let pingBadgeContent = '';
+  switch (proxy.ping_status) {
+    case 'ok':
+      pingBadgeContent = `
+        <svg class="icon" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
+        ${proxy.ping_ms}ms
+      `;
+      break;
+    case 'warning':
+      pingBadgeContent = `
+        <svg class="icon" viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/></svg>
+        ${proxy.ping_ms}ms
+      `;
+      break;
+    case 'failed':
+      pingBadgeContent = `
+        <svg class="icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+        Down
+      `;
+      break;
+    default:
+      pingBadgeContent = `
+        <svg class="icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>
+        Pending
+      `;
+  }
+  
+  card.innerHTML = `
+    <div class="proxy-header">
+      <div>
+        <h2 class="proxy-server">${proxy.server}<span class="proxy-port">:${proxy.port}</span></h2>
+      </div>
+      <button class="ping-badge ${proxy.ping_status}" onclick="checkPing(${proxy.id})" title="Click to refresh">
+        ${pingBadgeContent}
+      </button>
+    </div>
+
+    <div class="proxy-secret">${proxy.secret}</div>
+
+    <div class="proxy-actions">
+      <div class="vote-buttons">
+        <button 
+          class="vote-btn like" 
+          data-proxy-id="${proxy.id}" 
+          data-vote="like"
+          onclick="vote(${proxy.id}, 'like')"
+        >
+          <svg class="icon" viewBox="0 0 24 24"><path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/></svg>
+          <span class="count">${proxy.likes}</span>
+        </button>
+        <button 
+          class="vote-btn dislike" 
+          data-proxy-id="${proxy.id}" 
+          data-vote="dislike"
+          onclick="vote(${proxy.id}, 'dislike')"
+        >
+          <svg class="icon" viewBox="0 0 24 24"><path d="M15 3H6c-.83 0-1.54.5-1.84 1.22l-3.02 7.05c-.09.23-.14.47-.14.73v2c0 1.1.9 2 2 2h6.31l-.95 4.57-.03.32c0 .41.17.79.44 1.06L9.83 23l6.59-6.59c.36-.36.58-.86.58-1.41V5c0-1.1-.9-2-2-2zm4 0v12h4V3h-4z"/></svg>
+          <span class="count">${proxy.dislikes}</span>
+        </button>
+      </div>
+
+      <div class="link-buttons">
+        <a 
+          href="tg://proxy?server=${proxy.server}&port=${proxy.port}&secret=${proxy.secret}" 
+          class="link-btn"
+        >
+          <svg class="icon" viewBox="0 0 24 24"><path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/></svg>
+          Open
+        </a>
+        <button 
+          class="link-btn" 
+          onclick="copyLink('tg://proxy?server=${proxy.server}&port=${proxy.port}&secret=${proxy.secret}', this)"
+        >
+          <svg class="icon" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+          Copy
+        </button>
+        <button 
+          class="link-btn" 
+          onclick="showQRCode('${proxy.server}', '${proxy.port}', '${proxy.secret}')"
+        >
+          <svg class="icon" viewBox="0 0 24 24"><path d="M3 3h8v8H3V3m2 2v4h4V5H5m8-2h8v8h-8V3m2 2v4h4V5h-4M3 13h8v8H3v-8m2 2v4h4v-4H5m10-4h2v2h-2v-2m0 4h2v2h-2v-2m4-4h2v2h-2v-2m0 4h2v2h-2v-2m-4-4h2v2h-2v-2m0 4h2v2h-2v-2m4-4h2v2h-2v-2m0 4h2v2h-2v-2"/></svg>
+          QR
+        </button>
+      </div>
+    </div>
+  `;
+  
+  return card;
+}
 
 function showQRCode(server, port, secret) {
   const qrLink = `tg://proxy?server=${server}&port=${port}&secret=${secret}`;
