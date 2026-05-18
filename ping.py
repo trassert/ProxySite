@@ -103,9 +103,10 @@ class PingChecker:
             ping_ms = int((end - start) * 1000)
             writer.close()
             await writer.wait_closed()
-            return True, ping_ms
         except (TimeoutError, ConnectionRefusedError, OSError):
             return False, None
+        else:
+            return True, ping_ms
 
     @classmethod
     async def _proxy_get_check(

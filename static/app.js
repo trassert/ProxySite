@@ -10,7 +10,7 @@
 function toggleTheme() {
   const html = document.documentElement;
   const isDark = html.classList.contains('dark');
-  
+
   if (isDark) {
     html.classList.remove('dark');
     localStorage.setItem('theme', 'light');
@@ -90,7 +90,7 @@ async function vote(proxyId, voteType) {
           likeBtn.classList.remove('active');
         }
         showSnackbar(voteType === 'like' ? 'Liked!' : 'Disliked!');
-        
+
         // Re-sort by likes immediately when liked - move card to new position
         const currentSort = new URLSearchParams(window.location.search).get('sort') || 'likes';
         if (currentSort === 'likes' && voteType === 'like' && data.position !== null && data.position >= 0) {
@@ -415,13 +415,13 @@ async function updateStats() {
   try {
     const response = await fetch('./api/stats');
     const data = await response.json();
-    
+
     // Update stat chips
     const statChips = document.querySelectorAll('.stat-chip');
     statChips.forEach(chip => {
       const valueSpan = chip.querySelector('.value');
       if (!valueSpan) return;
-      
+
       if (chip.textContent.includes('proxies')) {
         valueSpan.textContent = data.total_proxies;
       } else if (chip.textContent.includes('likes')) {
@@ -443,19 +443,19 @@ async function refreshProxyList(sortBy = 'likes') {
   try {
     const response = await fetch(`./api/proxies?sort=${sortBy}&limit=100`);
     const data = await response.json();
-    
+
     const proxyList = document.querySelector('.proxy-list');
     if (!proxyList) return;
-    
+
     // Clear current list
     proxyList.innerHTML = '';
-    
+
     // Render new proxies
     data.proxies.forEach(proxy => {
       const card = createProxyCard(proxy);
       proxyList.appendChild(card);
     });
-    
+
     // Re-load user votes
     await loadUserVotes();
   } catch (error) {
@@ -466,17 +466,14 @@ async function refreshProxyList(sortBy = 'likes') {
 function createProxyCard(proxy) {
   const card = document.createElement('article');
   card.className = 'proxy-card';
-  if (proxy.is_fallback) {
-    card.classList.add('proxy-card-fallback');
-  }
   card.dataset.proxyId = proxy.id;
-  
+
   // Determine badge class based on status and fallback
   let badgeClass = proxy.ping_status;
   if (proxy.is_fallback) {
     badgeClass = 'fallback';
   }
-  
+
   let pingBadgeContent = '';
   switch (proxy.ping_status) {
     case 'ok':
@@ -523,7 +520,7 @@ function createProxyCard(proxy) {
         Pending
       `;
   }
-  
+
   card.innerHTML = `
     <div class="proxy-header">
       <div>
@@ -583,17 +580,17 @@ function createProxyCard(proxy) {
       </div>
     </div>
   `;
-  
+
   return card;
 }
 
 function showQRCode(server, port, secret) {
   const qrLink = `tg://proxy?server=${server}&port=${port}&secret=${secret}`;
-  
+
   // Clear previous QR code
   const container = document.getElementById('qr-code-container');
   container.innerHTML = '';
-  
+
   // Generate QR code using the library
   const qrcode = new QRCode(container, {
     text: qrLink,
@@ -603,6 +600,6 @@ function showQRCode(server, port, secret) {
     colorLight: getComputedStyle(document.documentElement).getPropertyValue('--md-sys-color-surface').trim(),
     correctLevel: QRCode.CorrectLevel.M
   });
-  
+
   openDialog('qr-dialog');
 }

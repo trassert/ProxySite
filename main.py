@@ -13,8 +13,6 @@ from fastapi import FastAPI, Form, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from pathlib import Path as _Path
-import time as _time
 
 from database import db
 from models import (
@@ -144,7 +142,9 @@ async def index(
             "sort_by": sort_by.value,
             "stats": stats,
             # Cache-bust static assets by modification time
-            "static_version": int((_Path(__file__).parent / "static" / "app.js").stat().st_mtime)
+            "static_version": int(
+                (Path(__file__).parent / "static" / "app.js").stat().st_mtime
+            ),
         },
     )
 
@@ -238,7 +238,9 @@ async def vote(
     new_position = None
     if data.vote_type == "like":
         proxies = await db.get_proxies(sort_by=SortBy.LIKES, limit=100, offset=0)
-        new_position = next((i for i, p in enumerate(proxies) if p.id == data.proxy_id), -1)
+        new_position = next(
+            (i for i, p in enumerate(proxies) if p.id == data.proxy_id), -1
+        )
 
     return VoteResponse(
         success=True,

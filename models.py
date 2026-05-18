@@ -73,6 +73,7 @@ class ProxyInDB(ProxyBase):
     likes: int = 0
     dislikes: int = 0
     ping_ms: int | None = None
+    tcp_ping_ms: int | None = None
     ping_status: PingStatus = PingStatus.PENDING
     tcp_ok: bool = False
     dns_ok: bool = False
