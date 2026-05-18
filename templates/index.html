@@ -116,23 +116,28 @@
               <h2 class="proxy-server">{{ proxy.server }}<span
                   class="proxy-port">:{{ proxy.port }}</span></h2>
             </div>
-            <button class="ping-badge {{ proxy.ping_status.value }}"
+            {% set badge_class = 'fallback' if proxy.is_fallback else proxy.ping_status.value %}
+            <button class="ping-badge {{ badge_class }}"
               onclick="checkPing({{ proxy.id }})" title="Click to refresh">
-              {% if proxy.ping_status.value == 'ok' %}
+              {% if proxy.is_fallback %}
               <svg class="icon" viewBox="0 0 24 24"><path
-                  d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" /></svg>
+                d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z" /></svg>
+              {{ proxy.ping_ms }}ms
+              {% elif proxy.ping_status.value == 'ok' %}
+              <svg class="icon" viewBox="0 0 24 24"><path
+                d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" /></svg>
               {{ proxy.ping_ms }}ms
               {% elif proxy.ping_status.value == 'warning' %}
               <svg class="icon" viewBox="0 0 24 24"><path
-                  d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z" /></svg>
+                d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z" /></svg>
               {{ proxy.ping_ms }}ms
               {% elif proxy.ping_status.value == 'failed' %}
               <svg class="icon" viewBox="0 0 24 24"><path
-                  d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" /></svg>
+                d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" /></svg>
               Down
               {% else %}
               <svg class="icon" viewBox="0 0 24 24"><path
-                  d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" /></svg>
+                d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" /></svg>
               Pending
               {% endif %}
             </button>
