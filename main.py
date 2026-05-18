@@ -13,6 +13,8 @@ from fastapi import FastAPI, Form, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from pathlib import Path as _Path
+import time as _time
 
 from database import db
 from models import (
@@ -141,6 +143,8 @@ async def index(
             "total": total,
             "sort_by": sort_by.value,
             "stats": stats,
+            # Cache-bust static assets by modification time
+            "static_version": int((_Path(__file__).parent / "static" / "app.js").stat().st_mtime)
         },
     )
 
