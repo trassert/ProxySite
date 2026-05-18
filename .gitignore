@@ -70,7 +70,11 @@ htmlcov/
 *.tar.xz
 *.tar.zst
 
-pnpm-lock.yaml
+**/__pycache__/
+.venv
+venv
+.env
+.vscode
 uv.lock
 .ruff_cache
-data
+pnpm-lock.yaml
