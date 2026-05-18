@@ -4,8 +4,6 @@
 __pycache__/
 *.o
 *.obj
-dist/
-build/
 *.class
 *.exe
 *.dll
@@ -17,6 +15,8 @@ build/
 .venv/
 venv/
 node_modules/
+dist/
+build/
 target/
 .gradle/
 .mypy_cache/
@@ -31,7 +31,7 @@ target/
 # Environment
 .env
 .env.local
-.env.*
+*.env.*
 
 # Editors
 .vscode/
