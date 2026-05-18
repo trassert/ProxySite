@@ -44,7 +44,7 @@ class PingChecker:
         """
         # First try proxy-get check
         proxy_get_ok, ping_ms = await cls._proxy_get_check(server, port, secret)
-        
+
         if proxy_get_ok:
             # Proxy-get succeeded, use this result
             if ping_ms is not None and ping_ms <= PING_OK_THRESHOLD:
@@ -60,10 +60,10 @@ class PingChecker:
                 dns_ok=True,
                 is_fallback=False,
             )
-        
+
         # Proxy-get failed, try TCP fallback
         tcp_ok, tcp_ping_ms = await cls._tcp_check(server, port)
-        
+
         if tcp_ok:
             # TCP connection succeeded but proxy-get failed
             status = PingStatus.WARNING  # Mark as warning since proxy-get failed
@@ -75,7 +75,7 @@ class PingChecker:
                 is_fallback=True,
                 tcp_ping_ms=tcp_ping_ms,
             )
-        
+
         # Both checks failed
         return PingResult(
             ping_ms=None,

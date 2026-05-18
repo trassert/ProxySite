@@ -229,13 +229,13 @@ async def vote(
         )
 
     likes, dislikes = result
-    
+
     # Return new position when liked for dynamic re-sorting
     new_position = None
     if data.vote_type == "like":
         proxies = await db.get_proxies(sort_by=SortBy.LIKES, limit=100, offset=0)
         new_position = next((i for i, p in enumerate(proxies) if p.id == data.proxy_id), -1)
-    
+
     return VoteResponse(
         success=True,
         likes=likes,
