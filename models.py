@@ -116,6 +116,7 @@ class VoteResponse(BaseModel):
     likes: int
     dislikes: int
     message: str = ""
+    position: int | None = None
 
 
 class ProxyListResponse(BaseModel):
