@@ -91,10 +91,10 @@ async function vote(proxyId, voteType) {
         }
         showSnackbar(voteType === 'like' ? 'Liked!' : 'Disliked!');
         
-        // Re-sort by likes immediately when liked
+        // Re-sort by likes immediately when liked - move card to new position
         const currentSort = new URLSearchParams(window.location.search).get('sort') || 'likes';
-        if (currentSort === 'likes' && voteType === 'like') {
-          await refreshProxyList('likes');
+        if (currentSort === 'likes' && voteType === 'like' && data.position !== null && data.position >= 0) {
+          await moveProxyCardToPosition(proxyId, data.position);
         }
       } else {
         showSnackbar(data.message || 'Already voted');
@@ -466,6 +466,9 @@ async function refreshProxyList(sortBy = 'likes') {
 function createProxyCard(proxy) {
   const card = document.createElement('article');
   card.className = 'proxy-card';
+  if (proxy.is_fallback) {
+    card.classList.add('proxy-card-fallback');
+  }
   card.dataset.proxyId = proxy.id;
   
   // Determine badge class based on status and fallback
@@ -485,7 +488,7 @@ function createProxyCard(proxy) {
       } else {
         pingBadgeContent = `
           <svg class="icon" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
-          ${proxy.ping_ms}ms
+          ${proxy.ping_ms || ''}ms
         `;
       }
       break;
@@ -498,7 +501,7 @@ function createProxyCard(proxy) {
       } else {
         pingBadgeContent = `
           <svg class="icon" viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/></svg>
-          ${proxy.ping_ms}ms
+          ${proxy.ping_ms || ''}ms
         `;
       }
       break;
