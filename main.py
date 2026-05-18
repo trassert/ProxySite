@@ -41,7 +41,7 @@ async def cleanup_worker() -> None:
             deleted_id = await db.delete_most_disliked(min_dislikes=5)
             if deleted_id:
                 print(f"[Cleanup] Deleted proxy {deleted_id} (most disliked)")
-            
+
             deleted_count = await db.delete_old_failed_proxies(days=5)
             if deleted_count:
                 print(f"[Cleanup] Deleted {deleted_count} proxies (failed for 5+ days)")
@@ -307,7 +307,9 @@ async def add_proxy_api(data: dict) -> dict:
 
                 if result:
                     asyncio.create_task(
-                        ping_proxy_async(result.id, result.server, result.port, result.secret)
+                        ping_proxy_async(
+                            result.id, result.server, result.port, result.secret
+                        )
                     )
 
             except ValueError as e:

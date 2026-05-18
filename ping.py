@@ -32,7 +32,9 @@ class PingChecker:
     PROXY_GET_REQUEST = b"\x00\x01\x00\x01\x00\x00\x00\x00"
 
     @classmethod
-    async def check(cls, server: str, port: int, secret: str | None = None) -> PingResult:
+    async def check(
+        cls, server: str, port: int, secret: str | None = None
+    ) -> PingResult:
         """
         Check proxy availability using MTProto Proxy-get request.
         Returns PingResult with status based on connection success and latency.
@@ -79,7 +81,7 @@ class PingChecker:
             # Build MTProto Proxy-get request
             # Format: dd (magic) + 4 bytes padding + 4 bytes timestamp
             secret_bytes = bytes.fromhex(secret) if secret else b""
-            
+
             # If secret starts with domain fronting prefix (ee...), handle it
             if secret_bytes.startswith(b"\xee"):
                 # Domain fronting: ee + 4 bytes domain len + domain + rest
@@ -87,7 +89,11 @@ class PingChecker:
             else:
                 # Standard secret - use as padding
                 # MTProto expects: magic(4) + random_padding(up to 512) + timestamp(4)
-                padding = secret_bytes[:56] if len(secret_bytes) >= 32 else secret_bytes.ljust(56, b"\x00")
+                padding = (
+                    secret_bytes[:56]
+                    if len(secret_bytes) >= 32
+                    else secret_bytes.ljust(56, b"\x00")
+                )
                 timestamp = struct.pack(">I", int(time.time()))
                 request = cls.PROXY_GET_REQUEST + padding + timestamp
 
@@ -118,7 +124,12 @@ class PingChecker:
             if not success:
                 return False, None
 
-        except (TimeoutError, ConnectionRefusedError, OSError, asyncio.IncompleteReadError):
+        except (
+            TimeoutError,
+            ConnectionRefusedError,
+            OSError,
+            asyncio.IncompleteReadError,
+        ):
             return False, None
         else:
             return True, ping_ms

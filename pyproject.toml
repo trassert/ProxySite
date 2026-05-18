@@ -3,7 +3,7 @@ name = "mtproto-proxy-hub"
 version = "1.0.0"
 description = "MTProto Proxy aggregator with voting system"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.11, <3.15"
 dependencies = [
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.32.0",
@@ -12,34 +12,6 @@ dependencies = [
     "pydantic==2.12.5",
     "python-multipart>=0.0.12",
     "pydantic-core==2.41.5",
-]
-
-[project.scripts]
-start = "uvicorn main:app --host 0.0.0.0 --port 8000"
-
-[dependency-groups]
-dev = [
-    "ruff>=0.7.0 ; sys_platform != 'android'",
-]
-
-[[tool.uv.index]]
-name = "termux-pydantic"
-url = "https://termux-user-repository.github.io/pypi/pydantic-core/"
-format = "flat"
-explicit = true
-
-[[tool.uv.index]]
-name = "termux-watchfiles"
-url = "https://termux-user-repository.github.io/pypi/watchfiles/"
-format = "flat"
-explicit = true
-
-[tool.uv.sources]
-pydantic-core = [
-    { index = "termux-pydantic", marker = "sys_platform == 'android'" },
-]
-watchfiles = [
-    { index = "termux-watchfiles", marker = "sys_platform == 'android'" },
 ]
 
 [tool.ruff]

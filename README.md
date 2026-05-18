@@ -45,27 +45,19 @@ This ensures proxies actually work with Telegram, not just accept TCP connection
 
 ### Requirements
 
-- Python 3.12+
-- Node.js 18+ (for frontend build)
+- Python 3.11+
 - SQLite (included via aiosqlite)
 
 ### Setup
 
 ```bash
-# Install Python dependencies
-pip install -r pyproject.toml
-
-# The frontend is pre-built, no npm install needed for basic usage
+uv sync
 ```
 
 ### Running
 
 ```bash
-# Development
 python main.py
-
-# Or with uvicorn directly
-uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 The application will be available at `http://localhost:8000`
@@ -139,14 +131,9 @@ Add proxy via API (supports both single and bulk)
 Supported formats for parsing:
 - `tg://proxy?server=...&port=...&secret=...`
 - `https://t.me/proxy?server=...&port=...&secret=...`
-- `mtproto://...` (if supported by parser)
 
 ## Configuration
 
 Environment variables (optional):
 - No environment variables required for basic operation
 - Database path: `data/proxies.db` (auto-created)
-
-## License
-
-MIT License
