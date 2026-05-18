@@ -811,6 +811,37 @@ input[type="number"] {
 }
 
 /* ============================================
+   QR Code Dialog
+   ============================================ */
+
+.qr-dialog {
+  text-align: center;
+}
+
+.qr-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 0;
+}
+
+#qr-code-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 16px;
+  background: var(--md-sys-color-surface);
+  border-radius: var(--md-sys-shape-corner-large);
+}
+
+.qr-hint {
+  font: var(--md-sys-typescale-body-medium);
+  color: var(--md-sys-color-on-surface-variant);
+  margin: 0;
+}
+
+/* ============================================
    Empty State
    ============================================ */
 

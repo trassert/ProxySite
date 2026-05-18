@@ -374,3 +374,36 @@ async function checkPing(proxyId) {
     showSnackbar('Ping check failed');
   }
 }
+
+// ============================================
+// QR Code
+// ============================================
+
+function showQRCode(server, port, secret) {
+  const qrLink = `tg://proxy?server=${server}&port=${port}&secret=${secret}`;
+  
+  // Clear previous QR code
+  const container = document.getElementById('qr-code-container');
+  container.innerHTML = '';
+  
+  // Generate QR code using the library
+  QRCode.toCanvas(qrLink, {
+    width: 256,
+    margin: 2,
+    color: {
+      dark: getComputedStyle(document.documentElement).getPropertyValue('--md-sys-color-on-surface').trim(),
+      light: getComputedStyle(document.documentElement).getPropertyValue('--md-sys-color-surface').trim()
+    }
+  }, function (error, canvas) {
+    if (error) {
+      console.error('QR Code generation error:', error);
+      container.innerHTML = '<p style="color: var(--md-sys-color-error);">Failed to generate QR code</p>';
+      return;
+    }
+    canvas.style.maxWidth = '100%';
+    canvas.style.height = 'auto';
+    container.appendChild(canvas);
+  });
+  
+  openDialog('qr-dialog');
+}
