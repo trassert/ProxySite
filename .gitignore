@@ -1,40 +1,46 @@
-```
-# Compiled and build artifacts
-*.pyc
+# Python
 __pycache__/
-*.o
-*.obj
-
-# Dependencies
-.venv/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
 venv/
-node_modules/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
 
-# Logs and temp files
+# Logs
 *.log
-*.tmp
-*.swp
+
+# Coverage
+.coverage
+coverage/
+htmlcov/
 
 # Environment
 .env
 .env.local
 .env.*
 
-# Editors
+# IDE
 .vscode/
 .idea/
+*.swp
+*.swo
+*.tmp
 
-# Coverage reports
-.coverage
-coverage/
-htmlcov/
+# OS
+.DS_Store
+Thumbs.db
 
-# Distribution artifacts
-dist/
+# Build
 build/
-target/
+dist/
+*.egg-info/
 
-# Python cache
-.mypy_cache/
-.pytest_cache/
-```
+pnpm-lock.yaml
+yarn.lock
+uv.lock
+.ruff_cache
+data
