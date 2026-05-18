@@ -356,9 +356,9 @@ async function checkPing(proxyId) {
     switch (data.status) {
       case 'ok':
         if (data.is_fallback) {
-          // Fallback proxy - show warning icon with exclamation
+          // Fallback proxy - show exclamation and TCP ping time
           statusIcon = '<path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>';
-          statusText = 'TCP OK';
+          statusText = `${data.ping_ms || ''}ms`;
         } else {
           statusIcon = '<path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>';
           statusText = `${data.ping_ms || ''}ms`;
@@ -366,9 +366,9 @@ async function checkPing(proxyId) {
         break;
       case 'warning':
         if (data.is_fallback) {
-          // TCP fallback succeeded but proxy-get failed
+          // TCP fallback succeeded but proxy-get failed — show exclamation + ping
           statusIcon = '<path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>';
-          statusText = 'TCP Only';
+          statusText = `${data.ping_ms || ''}ms`;
         } else {
           statusIcon = '<path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/>';
           statusText = `${data.ping_ms || ''}ms`;
