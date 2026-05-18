@@ -17,7 +17,7 @@
 
   --md-sys-color-tertiary: #77536D;
   --md-sys-color-on-tertiary: #FFFFFF;
-  --md-sys-color-tertiary-container: #FFD7F1;
+  --md-sys-color-tertiary-container: #4355b9;
   --md-sys-color-on-tertiary-container: #2D1228;
 
   --md-sys-color-error: #BA1A1A;
@@ -92,10 +92,10 @@ html.dark {
   --md-sys-color-secondary-container: #444559;
   --md-sys-color-on-secondary-container: #E0E1F9;
 
-  --md-sys-color-tertiary: #E6BAD7;
+  --md-sys-color-tertiary: #bac3ff;
   --md-sys-color-on-tertiary: #44263D;
   --md-sys-color-tertiary-container: #5D3C55;
-  --md-sys-color-on-tertiary-container: #FFD7F1;
+  --md-sys-color-on-tertiary-container: #4355b9;
 
   --md-sys-color-error: #FFB4AB;
   --md-sys-color-on-error: #690005;
