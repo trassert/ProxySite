@@ -388,10 +388,10 @@ async function checkPing(proxyId) {
     // Update stats bar
     await updateStats();
 
-    // Re-sort list if sorted by ping
+    // Smart re-sort: only refresh if position actually changed
     const currentSort = new URLSearchParams(window.location.search).get('sort') || 'likes';
     if (currentSort === 'ping') {
-      await refreshProxyList('ping');
+      await updateProxyIfPositionChanged(proxyId);
     } else {
       showSnackbar(data.is_fallback ? 'TCP fallback OK' : `Ping: ${data.status}`);
     }
@@ -404,6 +404,40 @@ async function checkPing(proxyId) {
       Error
     `;
     showSnackbar('Ping check failed');
+  }
+}
+
+/**
+ * Update proxy and only refresh list if position changed.
+ * Prevents unnecessary DOM reflows and flickering.
+ */
+async function updateProxyIfPositionChanged(proxyId) {
+  try {
+    // Get current position of proxy in the list
+    const oldPosition = Array.from(document.querySelectorAll('.proxy-card'))
+      .findIndex(card => parseInt(card.dataset.proxyId) === proxyId);
+
+    if (oldPosition === -1) return;
+
+    // Fetch new sorted list
+    const response = await fetch(`./api/proxies?sort=ping&limit=100`);
+    const data = await response.json();
+
+    // Find new position of proxy in the new list
+    const newPosition = data.proxies.findIndex(p => p.id === proxyId);
+
+    // If position hasn't changed, don't refresh
+    if (oldPosition === newPosition) {
+      showSnackbar('Ping updated');
+      return;
+    }
+
+    // If position changed, refresh list
+    await refreshProxyList('ping');
+  } catch (error) {
+    console.error('Failed to check position change:', error);
+    // Fallback: refresh anyway
+    await refreshProxyList('ping');
   }
 }
 

@@ -68,6 +68,7 @@ class Database:
                 tcp_ok INTEGER DEFAULT 0,
                 dns_ok INTEGER DEFAULT 0,
                 is_fallback INTEGER DEFAULT 0,
+                failed_since TEXT,
                 created_at TEXT NOT NULL,
                 last_checked TEXT,
                 UNIQUE(server, port, secret)
@@ -95,7 +96,8 @@ class Database:
 
     async def _ensure_schema(self) -> None:
         """Ensure database schema contains newer columns added in migrations.
-        Specifically adds the `tcp_ping_ms` column to `proxies` table if missing.
+        Specifically adds the `tcp_ping_ms` and `failed_since` columns if missing.
+        Also backfills failed_since for existing failed proxies.
         """
         if not self._connection:
             return
@@ -106,6 +108,34 @@ class Database:
             try:
                 await self._connection.execute(
                     "ALTER TABLE proxies ADD COLUMN tcp_ping_ms INTEGER"
+                )
+                await self._connection.commit()
+            except Exception:
+                pass
+        # Add failed_since column if missing
+        failed_since_added = False
+        if "failed_since" not in cols:
+            try:
+                await self._connection.execute(
+                    "ALTER TABLE proxies ADD COLUMN failed_since TEXT"
+                )
+                await self._connection.commit()
+                failed_since_added = True
+            except Exception:
+                pass
+
+        # Backfill failed_since for existing proxies that are in failed status
+        # This ensures old proxies are properly converted to the new format
+        if failed_since_added or "failed_since" in cols:
+            try:
+                await self._connection.execute(
+                    """
+                    UPDATE proxies
+                    SET failed_since = last_checked
+                    WHERE ping_status = 'failed'
+                      AND failed_since IS NULL
+                      AND last_checked IS NOT NULL
+                    """
                 )
                 await self._connection.commit()
             except Exception:
@@ -126,6 +156,9 @@ class Database:
             dns_ok=bool(row["dns_ok"]),
             is_fallback=bool(row["is_fallback"]),
             tcp_ping_ms=row["tcp_ping_ms"],
+            failed_since=datetime.fromisoformat(row["failed_since"])
+            if row["failed_since"]
+            else None,
             created_at=datetime.fromisoformat(row["created_at"]),
             last_checked=datetime.fromisoformat(row["last_checked"])
             if row["last_checked"]
@@ -147,10 +180,28 @@ class Database:
             msg = "Database not connected"
             raise RuntimeError(msg)
         now = datetime.utcnow().isoformat()
+
+        # Determine failed_since value: set when proxy becomes FAILED, clear when recovers
+        cursor = await self._connection.execute(
+            "SELECT ping_status, failed_since FROM proxies WHERE id = ?",
+            (proxy_id,),
+        )
+        existing = await cursor.fetchone()
+        existing_failed_since = existing["failed_since"] if existing else None
+        existing_status = existing["ping_status"] if existing else None
+
+        if ping_status.value == "failed":
+            if existing_status != "failed":
+                failed_since_val = now
+            else:
+                failed_since_val = existing_failed_since
+        else:
+            failed_since_val = None
+
         await self._connection.execute(
             """
             UPDATE proxies
-            SET ping_ms = ?, ping_status = ?, tcp_ok = ?, dns_ok = ?, is_fallback = ?, tcp_ping_ms = ?, last_checked = ?
+            SET ping_ms = ?, ping_status = ?, tcp_ok = ?, dns_ok = ?, is_fallback = ?, tcp_ping_ms = ?, last_checked = ?, failed_since = ?
             WHERE id = ?
             """,
             (
@@ -161,6 +212,7 @@ class Database:
                 int(is_fallback),
                 tcp_ping_ms,
                 now,
+                failed_since_val,
                 proxy_id,
             ),
         )
@@ -349,12 +401,13 @@ class Database:
         from datetime import timedelta
 
         cutoff = (datetime.utcnow() - timedelta(days=days)).isoformat()
+        # Use failed_since to determine how long proxy has been failing
         cursor = await self._connection.execute(
             """
             SELECT id FROM proxies
             WHERE ping_status = 'failed'
-              AND last_checked IS NOT NULL
-              AND last_checked < ?
+              AND failed_since IS NOT NULL
+              AND failed_since < ?
             """,
             (cutoff,),
         )

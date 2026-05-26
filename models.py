@@ -78,6 +78,7 @@ class ProxyInDB(ProxyBase):
     tcp_ok: bool = False
     dns_ok: bool = False
     is_fallback: bool = False
+    failed_since: datetime | None = None
     created_at: datetime
     last_checked: datetime | None = None
 
