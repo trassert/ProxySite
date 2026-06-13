@@ -12,6 +12,8 @@ dependencies = [
     "pydantic==2.12.5",
     "python-multipart>=0.0.12",
     "pydantic-core==2.41.5",
+    "loguru>=0.7.0",
+    "telethon>=2.0.0",
 ]
 
 [tool.ruff]

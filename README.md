@@ -134,6 +134,38 @@ Supported formats for parsing:
 
 ## Configuration
 
-Environment variables (optional):
-- No environment variables required for basic operation
-- Database path: `data/proxies.db` (auto-created)
+Configuration is loaded from `config.toml`.
+
+Example `config.toml`:
+
+```toml
+[app]
+debug = false
+
+[logging]
+level = "INFO"
+file = "logs/proxyhub.log"
+rotation = "10 MB"
+retention = "7 days"
+
+[telegram]
+enabled = false
+api_id = 123456
+api_hash = "your_api_hash"
+session_name = "proxyhub"
+channels = ["telemtrs", "@your_channel_id"]
+```
+
+### Telegram proxy ingestion
+
+When `telegram.enabled` is `true`, the app will start a Telethon client at startup and listen for new messages in configured Telegram channels.
+
+- Only authorized channels listed in `config.toml` are processed.
+- New message text is parsed for `tg://proxy` and `https://t.me/proxy` links.
+- Valid proxies are added automatically to the database.
+
+### Notes
+
+- `api_id` and `api_hash` are required when Telegram ingestion is enabled.
+- Session files are stored under `.session/`.
+- If Telegram is disabled, the app still works with manual and bulk proxy import.

@@ -14,6 +14,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from config import config, logger
 from database import db
 from models import (
     ParseLinksRequest,
@@ -28,6 +29,7 @@ from models import (
 )
 from parser import ProxyLinkParser
 from ping import PingChecker
+from telethon_client import TelegramProxyListener
 
 cleanup_task: asyncio.Task | None = None
 ping_task: asyncio.Task | None = None
@@ -40,13 +42,19 @@ async def cleanup_worker() -> None:
         try:
             deleted_id = await db.delete_most_disliked(min_dislikes=5)
             if deleted_id:
-                print(f"[Cleanup] Deleted proxy {deleted_id} (most disliked)")
+                logger.info(
+                    "Deleted proxy {proxy_id} (most disliked)",
+                    proxy_id=deleted_id,
+                )
 
             deleted_count = await db.delete_old_failed_proxies(days=5)
             if deleted_count:
-                print(f"[Cleanup] Deleted {deleted_count} proxies (failed for 5+ days)")
-        except Exception as e:
-            print(f"[Cleanup] Error: {e}")
+                logger.info(
+                    "Deleted {count} proxies (failed for 5+ days)",
+                    count=deleted_count,
+                )
+        except Exception as exc:
+            logger.exception("Cleanup worker failed: {error}", error=exc)
 
 
 async def ping_worker() -> None:
@@ -66,8 +74,8 @@ async def ping_worker() -> None:
                     tcp_ping_ms=result.tcp_ping_ms,
                 )
                 await asyncio.sleep(0.5)
-        except Exception as e:
-            print(f"[Ping] Error: {e}")
+        except Exception as exc:
+            logger.exception("Ping worker failed: {error}", error=exc)
 
         await asyncio.sleep(5 * 60)
 
@@ -81,12 +89,19 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     cleanup_task = asyncio.create_task(cleanup_worker())
     ping_task = asyncio.create_task(ping_worker())
 
+    if config.telegram.enabled:
+        await TelegramProxyListener.start()
+    else:
+        logger.info("Telegram proxy listener is disabled in config")
+
     yield
 
     if cleanup_task:
         cleanup_task.cancel()
     if ping_task:
         ping_task.cancel()
+    if config.telegram.enabled:
+        await TelegramProxyListener.stop()
     await db.close()
 
 
@@ -282,8 +297,12 @@ async def ping_proxy_async(proxy_id: int, server: str, port: int, secret: str) -
             is_fallback=result.is_fallback,
             tcp_ping_ms=result.tcp_ping_ms,
         )
-    except Exception as e:
-        print(f"[Auto-ping] Error pinging proxy {proxy_id}: {e}")
+    except Exception as exc:
+        logger.exception(
+            "Auto-ping failed for proxy {proxy_id}",
+            proxy_id=proxy_id,
+            exc=exc,
+        )
 
 
 @app.post("/api/add-proxy")
