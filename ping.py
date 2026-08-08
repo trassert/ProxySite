@@ -4,6 +4,8 @@ Uses MTProto Proxy-get request for accurate availability check.
 Falls back to basic TCP check if proxy-get fails.
 """
 
+from __future__ import annotations
+
 import asyncio
 import struct
 import time
@@ -66,7 +68,9 @@ class PingChecker:
 
         if tcp_ok:
             # TCP connection succeeded but proxy-get failed
-            status = PingStatus.WARNING  # Mark as warning since proxy-get failed
+            status = (
+                PingStatus.WARNING
+            )  # Mark as warning since proxy-get failed
             return PingResult(
                 ping_ms=tcp_ping_ms,  # Use TCP ping time
                 status=status,
@@ -86,7 +90,9 @@ class PingChecker:
         )
 
     @classmethod
-    async def _tcp_check(cls, server: str, port: int) -> tuple[bool, int | None]:
+    async def _tcp_check(
+        cls, server: str, port: int
+    ) -> tuple[bool, int | None]:
         """
         Perform basic TCP connectivity check with ping measurement.
         Tries to establish a connection and measures the time.

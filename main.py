@@ -17,6 +17,7 @@ from fastapi.templating import Jinja2Templates
 from config import config, logger
 from database import db
 from http_logger import RequestLogger
+from performance import RateLimiter, cache_store
 from models import (
     ParseLinksRequest,
     ParseLinksResponse,
@@ -44,16 +45,19 @@ async def cleanup_worker() -> None:
             deleted_id = await db.delete_most_disliked(min_dislikes=5)
             if deleted_id:
                 logger.info(
-                    "Deleted proxy {proxy_id} (most disliked)",
+                    "🗑️  Deleted proxy {proxy_id} (most disliked)",
                     proxy_id=deleted_id,
                 )
+                # Invalidate cache when proxy is deleted
+                cache_store.invalidate("proxies")
 
-            deleted_count = await db.delete_old_failed_proxies(days=5)
+            deleted_count = await db.delete_old_failed_proxies(days=2)
             if deleted_count:
                 logger.info(
-                    "Deleted {count} proxies (failed for 5+ days)",
+                    "🗑️  Removed {count} old failed proxies",
                     count=deleted_count,
                 )
+                cache_store.invalidate("proxies")
         except Exception as exc:
             logger.exception("Cleanup worker failed: {error}", error=exc)
 
@@ -113,8 +117,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Add request logging middleware
+# Add middleware in order: rate limit first, then logging
 app.add_middleware(RequestLogger)
+app.add_middleware(RateLimiter)
 
 static_path = Path(__file__).parent / "static"
 static_path.mkdir(exist_ok=True)

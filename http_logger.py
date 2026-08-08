@@ -144,8 +144,8 @@ class RequestLogger(BaseHTTPMiddleware):
     ) -> None:
         """Write formatted log message."""
         # Truncate long paths
-        if len(path) > 50:
-            path = path[:47] + "..."
+        if len(path) > 40:
+            path = path[:37] + "..."
 
         # Status emoji
         status_emoji = (
@@ -155,10 +155,7 @@ class RequestLogger(BaseHTTPMiddleware):
         # Format duration in ms
         duration_ms = duration * 1000
 
-        message = (
-            f"{status_emoji} {method:6} {path:50} {status:3} "
-            f"({duration_ms:6.0f}ms) {client}"
-        )
+        message = f"{status_emoji} {method:4} {path:40} {status:3} {duration_ms:5.0f}ms {client}"
         if note:
             message += note
 
