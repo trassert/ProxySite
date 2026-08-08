@@ -204,10 +204,9 @@ body {
 }
 
 .repo-banner {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  max-width: min(100%, 620px);
+  display: block;
+  width: fit-content;
+  max-width: calc(100% - 32px);
   border-radius: var(--md-sys-shape-corner-extra-large);
   background: linear-gradient(135deg, var(--md-sys-color-primary-container), var(--md-sys-color-secondary-container));
   color: var(--md-sys-color-on-primary-container);
@@ -216,6 +215,7 @@ body {
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
   text-align: center;
   font: var(--md-sys-typescale-label-large);
+  white-space: nowrap;
 }
 
 .repo-banner a {
