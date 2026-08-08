@@ -362,28 +362,24 @@ class Database:
         row = await cursor.fetchone()
         return row["vote_type"] if row else None
 
-    async def delete_most_disliked(self, min_dislikes: int = 5) -> int | None:
+    async def delete_most_disliked(self, min_dislikes: int = 5) -> int:
         """
-        Delete the proxy with most dislikes (if >= min_dislikes).
-        Returns deleted proxy ID or None.
+        Delete all proxies with dislikes >= min_dislikes.
+        Returns count of deleted proxies.
         """
         if not self._connection:
             msg = "Database not connected"
             raise RuntimeError(msg)
         cursor = await self._connection.execute(
-            """
-            SELECT id FROM proxies
-            WHERE dislikes >= ?
-            ORDER BY dislikes DESC
-            LIMIT 1
-            """,
+            "SELECT COUNT(*) as count FROM proxies WHERE dislikes >= ?",
             (min_dislikes,),
         )
         row = await cursor.fetchone()
-        if row:
-            proxy_id = row["id"]
+        deleted_count = row["count"] if row else 0
+        if deleted_count > 0:
             await self._connection.execute(
-                "DELETE FROM proxies WHERE id = ?", (proxy_id,)
+                "DELETE FROM proxies WHERE dislikes >= ?",
+                (min_dislikes,),
             )
             await self._connection.commit()
             now = datetime.utcnow().isoformat()
@@ -391,8 +387,7 @@ class Database:
                 "UPDATE stats SET last_cleanup = ?", (now,)
             )
             await self._connection.commit()
-            return proxy_id
-        return None
+        return deleted_count
 
     async def delete_old_failed_proxies(self, days: int = 5) -> int:
         """

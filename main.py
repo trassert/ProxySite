@@ -39,17 +39,15 @@ ping_task: asyncio.Task | None = None
 
 
 async def cleanup_worker() -> None:
-    """Background worker that removes most disliked proxy and old failed proxies every 30 minutes."""
+    """Background worker that removes disliked proxies and old failed proxies every 30 minutes."""
     while True:
-        await asyncio.sleep(30 * 60)
         try:
-            deleted_id = await db.delete_most_disliked(min_dislikes=5)
-            if deleted_id:
+            deleted_count = await db.delete_most_disliked(min_dislikes=5)
+            if deleted_count:
                 logger.info(
-                    "🗑️  Deleted proxy {proxy_id} (most disliked)",
-                    proxy_id=deleted_id,
+                    "🗑️  Deleted {count} disliked proxies",
+                    count=deleted_count,
                 )
-                # Invalidate cache when proxy is deleted
                 cache_store.invalidate("proxies")
 
             deleted_count = await db.delete_old_failed_proxies(days=2)
@@ -61,6 +59,7 @@ async def cleanup_worker() -> None:
                 cache_store.invalidate("proxies")
         except Exception as exc:
             logger.exception("Cleanup worker failed: {error}", error=exc)
+        await asyncio.sleep(30 * 60)
 
 
 async def ping_worker() -> None:
