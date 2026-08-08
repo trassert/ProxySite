@@ -69,14 +69,19 @@ def load_config(path: Path = CONFIG_PATH) -> Config:
         except Exception as exc:
             logger.warning("Failed to read config.toml: {exc}", exc=exc)
     else:
-        logger.warning("Config file {path} not found, using defaults", path=path)
+        logger.warning(
+            "Config file {path} not found, using defaults", path=path
+        )
 
     telegram = TelegramConfig(
         enabled=bool(config_data["telegram"].get("enabled", False)),
         api_id=int(config_data["telegram"].get("api_id", 0)),
         api_hash=str(config_data["telegram"].get("api_hash", "")),
-        session_name=str(config_data["telegram"].get("session_name", "proxyhub")),
-        channels=list(config_data["telegram"].get("channels", ["telemtrs"])) or [],
+        session_name=str(
+            config_data["telegram"].get("session_name", "proxyhub")
+        ),
+        channels=list(config_data["telegram"].get("channels", ["telemtrs"]))
+        or [],
     )
     logging = LoggingConfig(
         level=str(config_data["logging"].get("level", "INFO")),
@@ -95,7 +100,7 @@ logger.remove()
 logger.add(
     sys.stderr,
     level=config.logging.level,
-    format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>",
+    format="<green>{time:MM-DD HH:mm:ss}</green> | <level>{level}</level> | <cyan>{function}</cyan> - <level>{message}</level>",
 )
 log_file_path = Path(config.logging.file)
 log_file_path.parent.mkdir(parents=True, exist_ok=True)

@@ -40,8 +40,9 @@ class RequestLogger(BaseHTTPMiddleware):
         r"^/api/proxies",
     ]
 
-    # Time window (seconds) for grouping similar requests
-    GROUP_WINDOW = 5
+    # Count interval and time window for grouping similar requests
+    GROUP_COUNT_INTERVAL = 10
+    GROUP_WINDOW = 10
 
     def __init__(self, app):
         super().__init__(app)
@@ -87,7 +88,10 @@ class RequestLogger(BaseHTTPMiddleware):
 
     def _is_grouped_path(self, path: str) -> bool:
         """Check if path should be grouped."""
-        return any(re.match(pattern, path) for pattern in self.GROUPED_PATTERNS)
+        return bool(
+            any(re.match(pattern, path) for pattern in self.GROUPED_PATTERNS)
+            or re.search(r"/\d+(?=/|$)", path)
+        )
 
     def _log_request(
         self,
@@ -102,9 +106,8 @@ class RequestLogger(BaseHTTPMiddleware):
 
         # Check if this is a grouped path
         if self._is_grouped_path(path):
-            # Use normalized path as key for grouping
             normalized = self._normalize_path(path)
-            key = (method, normalized)
+            key = (method, normalized, status)
             history = self.request_history[key]
 
             # Remove old entries outside the time window
@@ -117,10 +120,13 @@ class RequestLogger(BaseHTTPMiddleware):
             count = len(history)
             history.append((current_time, status))
 
-            # Log first request immediately, then every 5th
+            # Log first request immediately, then every GROUP_COUNT_INTERVAL-th request
             if count == 0:
-                self._log_message(method, path, client, status, duration)
-            elif count % 5 == 4:  # Every 5th (0-indexed: 4, 9, 14...)
+                self._log_message(method, normalized, client, status, duration)
+            elif (
+                count % self.GROUP_COUNT_INTERVAL
+                == self.GROUP_COUNT_INTERVAL - 1
+            ):
                 self._log_message(
                     method,
                     normalized,
