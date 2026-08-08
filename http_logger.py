@@ -41,7 +41,7 @@ class RequestLogger(BaseHTTPMiddleware):
     ]
 
     # Time window (seconds) for grouping similar requests
-    GROUP_WINDOW = 5
+    GROUP_WINDOW = 25
 
     def __init__(self, app):
         super().__init__(app)
