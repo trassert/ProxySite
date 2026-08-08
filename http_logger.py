@@ -3,6 +3,7 @@ HTTP Request Logger Middleware for FastAPI.
 Provides clean, filtered logging of HTTP requests without spam.
 """
 
+import re
 import time
 from collections import defaultdict, deque
 from typing import Callable
@@ -20,7 +21,7 @@ class RequestLogger(BaseHTTPMiddleware):
 
     Features:
     - Filters repeated requests within time window
-    - Groups similar requests
+    - Groups similar requests (ignoring numeric IDs)
     - Ignores health-check and static file endpoints
     - Shows only important information
     """
@@ -34,18 +35,24 @@ class RequestLogger(BaseHTTPMiddleware):
     }
 
     # Paths that are logged but grouped (count duplicates within time window)
-    GROUPED_PATHS = {
-        "/api/vote/",
-        "/api/proxies",
-    }
+    GROUPED_PATTERNS = [
+        r"^/api/vote/\d+$",
+        r"^/api/proxies",
+    ]
 
     # Time window (seconds) for grouping similar requests
     GROUP_WINDOW = 5
 
     def __init__(self, app):
         super().__init__(app)
-        # Store request counts: {(method, path): deque of (timestamp, status))}
+        # Store request counts: {pattern_key: deque of (timestamp, status))}
         self.request_history: dict = defaultdict(lambda: deque(maxlen=100))
+
+    @staticmethod
+    def _normalize_path(path: str) -> str:
+        """Normalize path by replacing numeric IDs with placeholder."""
+        # Replace numeric IDs with * for grouping
+        return re.sub(r"/\d+(?=/|$)", "/*", path)
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """Process request and response."""
@@ -78,6 +85,10 @@ class RequestLogger(BaseHTTPMiddleware):
 
         return response
 
+    def _is_grouped_path(self, path: str) -> bool:
+        """Check if path should be grouped."""
+        return any(re.match(pattern, path) for pattern in self.GROUPED_PATTERNS)
+
     def _log_request(
         self,
         method: str,
@@ -87,16 +98,13 @@ class RequestLogger(BaseHTTPMiddleware):
         duration: float,
     ) -> None:
         """Log HTTP request with smart filtering."""
-        key = (method, path)
         current_time = time.time()
 
         # Check if this is a grouped path
-        is_grouped = any(
-            path.startswith(grouped) for grouped in self.GROUPED_PATHS
-        )
-
-        if is_grouped:
-            # For grouped paths, check if we've already logged similar request recently
+        if self._is_grouped_path(path):
+            # Use normalized path as key for grouping
+            normalized = self._normalize_path(path)
+            key = (method, normalized)
             history = self.request_history[key]
 
             # Remove old entries outside the time window
@@ -109,49 +117,23 @@ class RequestLogger(BaseHTTPMiddleware):
             count = len(history)
             history.append((current_time, status))
 
-            # Only log detailed info for the first request in the group
+            # Log first request immediately, then every 5th
             if count == 0:
-                self._write_log(method, path, client, status, duration)
-            elif count == 4:  # Log every 5th similar request
-                self._write_log(
+                self._log_message(method, path, client, status, duration)
+            elif count % 5 == 4:  # Every 5th (0-indexed: 4, 9, 14...)
+                self._log_message(
                     method,
-                    path,
+                    normalized,
                     client,
                     status,
                     duration,
-                    note=f"(+{count} similar in {self.GROUP_WINDOW}s)",
+                    note=f" +{count + 1}x",
                 )
         else:
             # For non-grouped paths, always log
-            self._log_request_detailed(method, path, client, status, duration)
+            self._log_message(method, path, client, status, duration)
 
-    def _log_request_detailed(
-        self,
-        method: str,
-        path: str,
-        client: str,
-        status: int,
-        duration: float,
-    ) -> None:
-        """Detailed logging for non-grouped requests."""
-        # Truncate long paths
-        display_path = path[:60] + "..." if len(path) > 60 else path
-
-        status_emoji = (
-            "✓" if 200 <= status < 300 else "⚠" if 300 <= status < 400 else "✗"
-        )
-
-        logger.info(
-            "{emoji} {method:6} {path:65} {status:3} ({duration:.2f}s) | {client}",
-            emoji=status_emoji,
-            method=method,
-            path=display_path,
-            status=status,
-            duration=duration,
-            client=client,
-        )
-
-    def _write_log(
+    def _log_message(
         self,
         method: str,
         path: str,
@@ -160,21 +142,25 @@ class RequestLogger(BaseHTTPMiddleware):
         duration: float,
         note: str = "",
     ) -> None:
-        """Write log message."""
+        """Write formatted log message."""
         # Truncate long paths
-        display_path = path[:50] + "..." if len(path) > 50 else path
+        if len(path) > 50:
+            path = path[:47] + "..."
 
+        # Status emoji
         status_emoji = (
             "✓" if 200 <= status < 300 else "⚠" if 300 <= status < 400 else "✗"
         )
 
-        message = (
-            f"{status_emoji} {method:6} {display_path:53} "
-            f"{status:3} ({duration * 1000:.0f}ms) | {client}"
-        )
+        # Format duration in ms
+        duration_ms = duration * 1000
 
+        message = (
+            f"{status_emoji} {method:6} {path:50} {status:3} "
+            f"({duration_ms:6.0f}ms) {client}"
+        )
         if note:
-            message += f" {note}"
+            message += note
 
         logger.info(message)
 
