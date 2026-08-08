@@ -21,6 +21,7 @@ from performance import RateLimiter, cache_store
 from models import (
     ParseLinksRequest,
     ParseLinksResponse,
+    PingStatus,
     ProxyCreate,
     ProxyListResponse,
     ProxyResponse,
@@ -145,6 +146,30 @@ def get_voter_id(request: Request, response: Response) -> str:
     return voter_id
 
 
+async def _validate_and_create_proxy(
+    proxy: ProxyCreate,
+) -> tuple[ProxyResponse | None, str | None]:
+    """Validate proxy ping and add it to the database if reachable."""
+    result = await PingChecker.check(proxy.server, proxy.port, proxy.secret)
+    if result.status == PingStatus.FAILED:
+        return None, "Proxy failed ping check"
+
+    added = await db.add_proxy(proxy)
+    if not added:
+        return None, "Proxy already exists"
+
+    await db.update_ping(
+        proxy_id=added.id,
+        ping_ms=result.ping_ms,
+        ping_status=result.status,
+        tcp_ok=result.tcp_ok,
+        dns_ok=result.dns_ok,
+        is_fallback=result.is_fallback,
+        tcp_ping_ms=result.tcp_ping_ms,
+    )
+    return ProxyResponse.model_validate(added), None
+
+
 @app.get("/", response_class=HTMLResponse)
 async def index(
     request: Request,
@@ -197,10 +222,12 @@ async def list_proxies(
 @app.post("/api/proxies", response_model=ProxyResponse | None)
 async def add_proxy(proxy: ProxyCreate) -> ProxyResponse | dict:
     """Add a single proxy."""
-    result = await db.add_proxy(proxy)
-    if not result:
-        raise HTTPException(status_code=409, detail="Proxy already exists")
-    return ProxyResponse.model_validate(result)
+    result, error = await _validate_and_create_proxy(proxy)
+    if error:
+        if error == "Proxy already exists":
+            raise HTTPException(status_code=409, detail=error)
+        raise HTTPException(status_code=400, detail=error)
+    return result
 
 
 @app.post("/api/proxies/parse", response_model=ParseLinksResponse)
@@ -223,11 +250,13 @@ async def add_bulk(data: ParseLinksRequest) -> dict:
     duplicates = 0
 
     for proxy in proxies:
-        result = await db.add_proxy(proxy)
+        result, error = await _validate_and_create_proxy(proxy)
         if result:
             added += 1
-        else:
+        elif error == "Proxy already exists":
             duplicates += 1
+        elif error:
+            errors.append(f"{proxy.server}:{proxy.port} - {error}")
 
     return {
         "added": added,
@@ -332,19 +361,13 @@ async def add_proxy_api(data: dict) -> dict:
             added = 0
             duplicates = 0
             for proxy in proxies:
-                result = await db.add_proxy(proxy)
+                result, error = await _validate_and_create_proxy(proxy)
                 if result:
                     added += 1
-                    added_proxies.append(result)
-                else:
+                elif error == "Proxy already exists":
                     duplicates += 1
-
-            for proxy in added_proxies:
-                asyncio.create_task(
-                    ping_proxy_async(
-                        proxy.id, proxy.server, proxy.port, proxy.secret
-                    )
-                )
+                elif error:
+                    errors.append(f"{proxy.server}:{proxy.port} - {error}")
 
             return {
                 "added": added,
@@ -358,14 +381,19 @@ async def add_proxy_api(data: dict) -> dict:
                     port=int(data["port"]),
                     secret=data["secret"],
                 )
-                result = await db.add_proxy(proxy)
-
-                if result:
-                    asyncio.create_task(
-                        ping_proxy_async(
-                            result.id, result.server, result.port, result.secret
-                        )
-                    )
+                result, error = await _validate_and_create_proxy(proxy)
+                if error and error != "Proxy already exists":
+                    return {
+                        "added": 0,
+                        "duplicates": 0,
+                        "errors": [error],
+                    }
+                if error == "Proxy already exists":
+                    return {
+                        "added": 0,
+                        "duplicates": 1,
+                        "errors": [],
+                    }
 
             except ValueError as e:
                 return {
@@ -439,20 +467,24 @@ async def add_proxy_form(
         errors.extend(parse_errors)
 
         for proxy in proxies:
-            result = await db.add_proxy(proxy)
+            result, error = await _validate_and_create_proxy(proxy)
             if result:
                 added += 1
-            else:
+            elif error == "Proxy already exists":
                 duplicates += 1
+            elif error:
+                errors.append(f"{proxy.server}:{proxy.port} - {error}")
 
     elif server and port and secret:
         try:
             proxy = ProxyCreate(server=server, port=port, secret=secret)
-            result = await db.add_proxy(proxy)
+            result, error = await _validate_and_create_proxy(proxy)
             if result:
                 added += 1
-            else:
+            elif error == "Proxy already exists":
                 duplicates += 1
+            elif error:
+                errors.append(error)
         except ValueError as e:
             errors.append(str(e))
 

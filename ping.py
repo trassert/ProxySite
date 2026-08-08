@@ -48,11 +48,10 @@ class PingChecker:
         proxy_get_ok, ping_ms = await cls._proxy_get_check(server, port, secret)
 
         if proxy_get_ok:
-            # Proxy-get succeeded, use this result
             if ping_ms is not None and ping_ms <= PING_OK_THRESHOLD:
                 status = PingStatus.OK
             elif ping_ms is not None and ping_ms <= PING_WARNING_THRESHOLD:
-                status = PingStatus.OK
+                status = PingStatus.WARNING
             else:
                 status = PingStatus.WARNING
             return PingResult(
@@ -98,7 +97,7 @@ class PingChecker:
         Tries to establish a connection and measures the time.
         Returns (success, ping_ms).
         """
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         try:
             start = loop.time()
             reader, writer = await asyncio.wait_for(

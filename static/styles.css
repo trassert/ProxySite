@@ -200,7 +200,26 @@ body {
   flex-direction: column;
   align-items: center;
   position: relative;
-  margin-bottom: 32px;
+  margin-bottom: 24px;
+}
+
+.repo-banner {
+  width: 100%;
+  border-radius: var(--md-sys-shape-corner-extra-large);
+  background: linear-gradient(135deg, var(--md-sys-color-primary-container), var(--md-sys-color-secondary-container));
+  color: var(--md-sys-color-on-primary-container);
+  padding: 14px 18px;
+  margin-bottom: 18px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+  text-align: center;
+  font: var(--md-sys-typescale-label-large);
+}
+
+.repo-banner a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
 }
 
 .header-content {
