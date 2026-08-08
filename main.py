@@ -16,6 +16,7 @@ from fastapi.templating import Jinja2Templates
 
 from config import config, logger
 from database import db
+from http_logger import RequestLogger
 from models import (
     ParseLinksRequest,
     ParseLinksResponse,
@@ -112,6 +113,8 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Add request logging middleware
+app.add_middleware(RequestLogger)
 
 static_path = Path(__file__).parent / "static"
 static_path.mkdir(exist_ok=True)
@@ -143,7 +146,9 @@ async def index(
     sort: str = "likes",
 ) -> Response:
     """Main page with proxy list."""
-    sort_by = SortBy(sort) if sort in [s.value for s in SortBy] else SortBy.LIKES
+    sort_by = (
+        SortBy(sort) if sort in [s.value for s in SortBy] else SortBy.LIKES
+    )
     proxies = await db.get_proxies(sort_by=sort_by, limit=100)
     total = await db.get_total_count()
     stats = await db.get_stats()
@@ -171,7 +176,9 @@ async def list_proxies(
     offset: int = 0,
 ) -> ProxyListResponse:
     """Get list of proxies."""
-    sort_by = SortBy(sort) if sort in [s.value for s in SortBy] else SortBy.LIKES
+    sort_by = (
+        SortBy(sort) if sort in [s.value for s in SortBy] else SortBy.LIKES
+    )
     proxies = await db.get_proxies(sort_by=sort_by, limit=limit, offset=offset)
     total = await db.get_total_count()
 
@@ -252,7 +259,9 @@ async def vote(
     # Return new position when liked for dynamic re-sorting
     new_position = None
     if data.vote_type == "like":
-        proxies = await db.get_proxies(sort_by=SortBy.LIKES, limit=100, offset=0)
+        proxies = await db.get_proxies(
+            sort_by=SortBy.LIKES, limit=100, offset=0
+        )
         new_position = next(
             (i for i, p in enumerate(proxies) if p.id == data.proxy_id), -1
         )
@@ -284,7 +293,9 @@ async def get_stats() -> StatsResponse:
     return StatsResponse(**stats)
 
 
-async def ping_proxy_async(proxy_id: int, server: str, port: int, secret: str) -> None:
+async def ping_proxy_async(
+    proxy_id: int, server: str, port: int, secret: str
+) -> None:
     """Background task to ping a newly added proxy."""
     try:
         result = await PingChecker.check(server, port, secret)
@@ -325,7 +336,9 @@ async def add_proxy_api(data: dict) -> dict:
 
             for proxy in added_proxies:
                 asyncio.create_task(
-                    ping_proxy_async(proxy.id, proxy.server, proxy.port, proxy.secret)
+                    ping_proxy_async(
+                        proxy.id, proxy.server, proxy.port, proxy.secret
+                    )
                 )
 
             return {
@@ -452,4 +465,10 @@ async def add_proxy_form(
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(
+        app,
+        host="0.0.0.0",
+        port=8000,
+        access_log=False,  # Disable default Uvicorn access logs
+        log_config=None,  # Use our custom logging config from config.py
+    )
