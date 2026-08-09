@@ -588,7 +588,7 @@ function createProxyCard(proxy) {
           <span class="count">${proxy.dislikes}</span>
         </button>
         <button class="pin-button ${proxy.pinned ? 'pinned' : ''}" onclick="togglePin(${proxy.id}, ${proxy.pinned ? 'false' : 'true'})" title="${proxy.pinned ? 'Unpin proxy' : 'Pin proxy'}">
-          <svg class="icon" viewBox="0 0 24 24" width="20" height="20"><path d="M16 12v-1c0-2.21-1.79-4-4-4s-4 1.79-4 4v1c-1.1 0-2 .9-2 2v6c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2v-6c0-1.1-.9-2-2-2zm-6 0v-1c0-1.1.9-2 2-2s2 .9 2 2v1h-4z"/></svg>
+          <svg class="icon" viewBox="0 0 24 24" width="20" height="20"><path d="M17 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm2 16H5V5h10v4h4v10z"/></svg>
         </button>
       </div>
 
@@ -611,7 +611,7 @@ function createProxyCard(proxy) {
           class="link-btn" 
           onclick="showQRCode('${proxy.server}', '${proxy.port}', '${proxy.secret}')"
         >
-          <svg class="icon" viewBox="0 0 24 24" width="20" height="20"><path d="M3 11h8V3H3v8zm2-6h4v4H5V5zm8-2v8h8V3h-8zm6 6h-4V5h4v4zM3 21h8v-8H3v8zm2-6h4v4H5v-4zm8-2v8h8v-8h-8zm6 6h-4v-4h4v4z"/></svg>
+          <svg class="icon" viewBox="0 0 24 24" width="20" height="20"><rect x="3" y="3" width="8" height="8" fill="none" stroke="currentColor" stroke-width="1"/><rect x="13" y="3" width="8" height="8" fill="none" stroke="currentColor" stroke-width="1"/><rect x="3" y="13" width="8" height="8" fill="none" stroke="currentColor" stroke-width="1"/><circle cx="17" cy="17" r="3" fill="currentColor"/><circle cx="19" cy="15" r="1" fill="currentColor"/><circle cx="15" cy="19" r="1" fill="currentColor"/></svg>
           QR
         </button>
       </div>
@@ -654,8 +654,8 @@ async function setPin(proxyId, pinned, password) {
       pinBtn.classList.toggle('pinned', data.pinned);
       pinBtn.title = data.pinned ? 'Unpin proxy' : 'Pin proxy';
       pinBtn.innerHTML = data.pinned ?
-        `<svg class="icon" viewBox="0 0 24 24" width="20" height="20"><path d="M16 12v-1c0-2.21-1.79-4-4-4s-4 1.79-4 4v1c-1.1 0-2 .9-2 2v6c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2v-6c0-1.1-.9-2-2-2zm-6 0v-1c0-1.1.9-2 2-2s2 .9 2 2v1h-4z"/></svg>` :
-        `<svg class="icon" viewBox="0 0 24 24" width="20" height="20"><path d="M16 12v-1c0-2.21-1.79-4-4-4s-4 1.79-4 4v1c-1.1 0-2 .9-2 2v6c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2v-6c0-1.1-.9-2-2-2zm-6 0v-1c0-1.1.9-2 2-2s2 .9 2 2v1h-4z"/></svg>`;
+        `<svg class="icon" viewBox="0 0 24 24" width="20" height="20"><path d="M17 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm2 16H5V5h10v4h4v10z"/></svg>` :
+        `<svg class="icon" viewBox="0 0 24 24" width="20" height="20"><path d="M17 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm2 16H5V5h10v4h4v10z"/></svg>`;
       pinBtn.setAttribute('onclick', `togglePin(${proxyId}, ${data.pinned ? 'false' : 'true'})`);
     }
 
