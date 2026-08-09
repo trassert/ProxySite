@@ -588,7 +588,7 @@ function createProxyCard(proxy) {
           <span class="count">${proxy.dislikes}</span>
         </button>
         <button class="pin-button ${proxy.pinned ? 'pinned' : ''}" onclick="togglePin(${proxy.id}, ${proxy.pinned ? 'false' : 'true'})" title="${proxy.pinned ? 'Unpin proxy' : 'Pin proxy'}">
-          <svg class="icon" viewBox="0 0 24 24"><path d="M12 2l-2 2 1.5 1.5L7 9l1.5 1.5L12 7l3.5 3.5L17 9l-4.5-3.5L14 4l-2-2zm-1 11.5h2V22h-2v-8.5z"/></svg>
+          <svg class="icon" viewBox="0 0 24 24"><path d="M12 2l-2 2H6l2 6-5 5 2 2 5-5 5 5 2-2-5-5 2-6h-4l-2-2zm-1 9h2v9h-2v-9z"/></svg>
         </button>
       </div>
 
@@ -611,7 +611,7 @@ function createProxyCard(proxy) {
           class="link-btn" 
           onclick="showQRCode('${proxy.server}', '${proxy.port}', '${proxy.secret}')"
         >
-          <svg class="icon" viewBox="0 0 24 24"><path d="M3 3h8v8H3V3m2 2v4h4V5H5m8-2h8v8h-8V3m2 2v4h4V5h-4M3 13h8v8H3v-8m2 2v4h4v-4H5m10-4h2v2h-2v-2m0 4h2v2h-2v-2m4-4h2v2h-2v-2m0 4h2v2h-2v-2m-4-4h2v2h-2v-2m0 4h2v2h-2v-2m4-4h2v2h-2v-2m0 4h2v2h-2v-2"/></svg>
+          <svg class="icon" viewBox="0 0 24 24"><path d="M4 4h6v6H4V4zm2 2v2h2V6H6zm8-2h6v6h-6V4zm2 2v2h2V6h-2zM4 14h6v6H4v-6zm2 2v2h2v-2H6zm8-2h6v6h-6v-6zm2 2v2h2v-2h-2zM11 11h2v2h-2v-2zm0 4h2v2h-2v-2z"/></svg>
           QR
         </button>
       </div>
