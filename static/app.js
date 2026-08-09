@@ -331,7 +331,7 @@ async function checkPing(proxyId) {
 
   badge.className = 'ping-badge pending';
   badge.innerHTML = `
-    <svg class="icon" viewBox="0 0 24 24">
+    <svg class="icon" viewBox="0 0 24 24" width="16" height="16">
       <path d="M12,4V2A10,10 0 0,0 2,12H4A8,8 0 0,1 12,4Z">
         <animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="1s" repeatCount="indefinite"/>
       </path>
@@ -357,7 +357,7 @@ async function checkPing(proxyId) {
       case 'ok':
         if (data.is_fallback) {
           // Fallback proxy - show exclamation and TCP ping time
-          statusIcon = '<path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>';
+          statusIcon = '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>';
           statusText = `${data.ping_ms || ''}ms`;
         } else {
           statusIcon = '<path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>';
@@ -367,10 +367,10 @@ async function checkPing(proxyId) {
       case 'warning':
         if (data.is_fallback) {
           // TCP fallback succeeded but proxy-get failed — show exclamation + ping
-          statusIcon = '<path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>';
+          statusIcon = '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>';
           statusText = `${data.ping_ms || ''}ms`;
         } else {
-          statusIcon = '<path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/>';
+          statusIcon = '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>';
           statusText = `${data.ping_ms || ''}ms`;
         }
         break;
@@ -381,7 +381,7 @@ async function checkPing(proxyId) {
     }
 
     badge.innerHTML = `
-      <svg class="icon" viewBox="0 0 24 24">${statusIcon}</svg>
+      <svg class="icon" viewBox="0 0 24 24" width="16" height="16">${statusIcon}</svg>
       ${statusText}
     `;
 
@@ -398,7 +398,7 @@ async function checkPing(proxyId) {
   } catch (error) {
     badge.className = 'ping-badge failed';
     badge.innerHTML = `
-      <svg class="icon" viewBox="0 0 24 24">
+      <svg class="icon" viewBox="0 0 24 24" width="16" height="16">
         <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
       </svg>
       Error
@@ -515,13 +515,13 @@ function createProxyCard(proxy) {
         // TCP fallback succeeded - show TCP ping time
         const tcpPing = proxy.ping_ms ?? 0;
         pingBadgeContent = `
-          <svg class="icon" viewBox="0 0 24 24"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
+          <svg class="icon" viewBox="0 0 24 24" width="16" height="16"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
           ${tcpPing}ms
         `;
       } else {
         const pingVal = proxy.ping_ms ?? 0;
         pingBadgeContent = `
-          <svg class="icon" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
+          <svg class="icon" viewBox="0 0 24 24" width="16" height="16"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
           ${pingVal}ms
         `;
       }
@@ -531,26 +531,26 @@ function createProxyCard(proxy) {
         // TCP fallback succeeded but proxy-get failed
         const tcpPing = proxy.ping_ms ?? 0;
         pingBadgeContent = `
-          <svg class="icon" viewBox="0 0 24 24"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
+          <svg class="icon" viewBox="0 0 24 24" width="16" height="16"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
           ${tcpPing}ms
         `;
       } else {
         const pingVal = proxy.ping_ms ?? 0;
         pingBadgeContent = `
-          <svg class="icon" viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/></svg>
+          <svg class="icon" viewBox="0 0 24 24" width="16" height="16"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
           ${pingVal}ms
         `;
       }
       break;
     case 'failed':
       pingBadgeContent = `
-        <svg class="icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+        <svg class="icon" viewBox="0 0 24 24" width="16" height="16"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
         Down
       `;
       break;
     default:
       pingBadgeContent = `
-        <svg class="icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>
+        <svg class="icon" viewBox="0 0 24 24" width="16" height="16"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>
         Pending
       `;
   }
@@ -575,7 +575,7 @@ function createProxyCard(proxy) {
           data-vote="like"
           onclick="vote(${proxy.id}, 'like')"
         >
-          <svg class="icon" viewBox="0 0 24 24"><path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/></svg>
+          <svg class="icon" viewBox="0 0 24 24" width="20" height="20"><path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"/></svg>
           <span class="count">${proxy.likes}</span>
         </button>
         <button 
@@ -584,11 +584,11 @@ function createProxyCard(proxy) {
           data-vote="dislike"
           onclick="vote(${proxy.id}, 'dislike')"
         >
-          <svg class="icon" viewBox="0 0 24 24"><path d="M15 3H6c-.83 0-1.54.5-1.84 1.22l-3.02 7.05c-.09.23-.14.47-.14.73v2c0 1.1.9 2 2 2h6.31l-.95 4.57-.03.32c0 .41.17.79.44 1.06L9.83 23l6.59-6.59c.36-.36.58-.86.58-1.41V5c0-1.1-.9-2-2-2zm4 0v12h4V3h-4z"/></svg>
+          <svg class="icon" viewBox="0 0 24 24" width="20" height="20"><path d="M15 3H6c-.83 0-1.54.5-1.84 1.22l-3.02 7.05c-.09.23-.14.47-.14.73v2c0 1.1.9 2 2 2h6.31l-.95 4.57-.03.32c0 .41.17.79.44 1.06L9.83 23l6.59-6.59c.36-.36.58-.86.58-1.41V5c0-1.1-.9-2-2-2zm4 0v12h4V3h-4z"/></svg>
           <span class="count">${proxy.dislikes}</span>
         </button>
         <button class="pin-button ${proxy.pinned ? 'pinned' : ''}" onclick="togglePin(${proxy.id}, ${proxy.pinned ? 'false' : 'true'})" title="${proxy.pinned ? 'Unpin proxy' : 'Pin proxy'}">
-          <svg class="icon" viewBox="0 0 24 24"><path d="M12 2l-2 2H6l2 6-5 5 2 2 5-5 5 5 2-2-5-5 2-6h-4l-2-2zm-1 9h2v9h-2v-9z"/></svg>
+          <svg class="icon" viewBox="0 0 24 24" width="20" height="20"><path d="M16 12v-1c0-2.21-1.79-4-4-4s-4 1.79-4 4v1c-1.1 0-2 .9-2 2v6c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2v-6c0-1.1-.9-2-2-2zm-6 0v-1c0-1.1.9-2 2-2s2 .9 2 2v1h-4z"/></svg>
         </button>
       </div>
 
@@ -597,21 +597,21 @@ function createProxyCard(proxy) {
           href="tg://proxy?server=${proxy.server}&port=${proxy.port}&secret=${proxy.secret}" 
           class="link-btn"
         >
-          <svg class="icon" viewBox="0 0 24 24"><path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/></svg>
+          <svg class="icon" viewBox="0 0 24 24" width="20" height="20"><path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/></svg>
           Open
         </a>
         <button 
           class="link-btn" 
           onclick="copyLink('tg://proxy?server=${proxy.server}&port=${proxy.port}&secret=${proxy.secret}', this)"
         >
-          <svg class="icon" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+          <svg class="icon" viewBox="0 0 24 24" width="20" height="20"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
           Copy
         </button>
         <button 
           class="link-btn" 
           onclick="showQRCode('${proxy.server}', '${proxy.port}', '${proxy.secret}')"
         >
-          <svg class="icon" viewBox="0 0 24 24"><path d="M4 4h6v6H4V4zm2 2v2h2V6H6zm8-2h6v6h-6V4zm2 2v2h2V6h-2zM4 14h6v6H4v-6zm2 2v2h2v-2H6zm8-2h6v6h-6v-6zm2 2v2h2v-2h-2zM11 11h2v2h-2v-2zm0 4h2v2h-2v-2z"/></svg>
+          <svg class="icon" viewBox="0 0 24 24" width="20" height="20"><path d="M3 11h8V3H3v8zm2-6h4v4H5V5zm8-2v8h8V3h-8zm6 6h-4V5h4v4zM3 21h8v-8H3v8zm2-6h4v4H5v-4zm8-2v8h8v-8h-8zm6 6h-4v-4h4v4z"/></svg>
           QR
         </button>
       </div>
@@ -654,8 +654,8 @@ async function setPin(proxyId, pinned, password) {
       pinBtn.classList.toggle('pinned', data.pinned);
       pinBtn.title = data.pinned ? 'Unpin proxy' : 'Pin proxy';
       pinBtn.innerHTML = data.pinned ?
-        '<svg class="icon" viewBox="0 0 24 24"><path d="M12 2c-1.1 0-2 .9-2 2v5.17L6.41 11 5 9.59 10.17 4.42 12 2zm6 7.59L17.59 11 14 7.41V4c0-1.1-.9-2-2-2-1.1 0-2 .9-2 2v3.41L9.41 11 8 9.59l5-5 5 5zM12 22l-7-7 1.41-1.41L11 18.17V13h2v5.17l4.59-4.58L19 15l-7 7z"/></svg>' :
-        '<svg class="icon" viewBox="0 0 24 24"><path d="M12 2c-1.1 0-2 .9-2 2v5.17L6.41 11 5 9.59 10.17 4.42 12 2zm6 7.59L17.59 11 14 7.41V4c0-1.1-.9-2-2-2-1.1 0-2 .9-2 2v3.41L9.41 11 8 9.59l5-5 5 5zm-6 12.41l-7-7 1.41-1.41L11 18.17V13h2v5.17l4.59-4.58L19 15l-7 7z"/></svg>';
+        `<svg class="icon" viewBox="0 0 24 24" width="20" height="20"><path d="M16 12v-1c0-2.21-1.79-4-4-4s-4 1.79-4 4v1c-1.1 0-2 .9-2 2v6c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2v-6c0-1.1-.9-2-2-2zm-6 0v-1c0-1.1.9-2 2-2s2 .9 2 2v1h-4z"/></svg>` :
+        `<svg class="icon" viewBox="0 0 24 24" width="20" height="20"><path d="M16 12v-1c0-2.21-1.79-4-4-4s-4 1.79-4 4v1c-1.1 0-2 .9-2 2v6c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2v-6c0-1.1-.9-2-2-2zm-6 0v-1c0-1.1.9-2 2-2s2 .9 2 2v1h-4z"/></svg>`;
       pinBtn.setAttribute('onclick', `togglePin(${proxyId}, ${data.pinned ? 'false' : 'true'})`);
     }
 
