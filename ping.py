@@ -67,7 +67,9 @@ class PingChecker:
 
         if tcp_ok:
             # TCP connection succeeded but proxy-get failed
-            status = PingStatus.WARNING  # Mark as warning since proxy-get failed
+            status = (
+                PingStatus.WARNING
+            )  # Mark as warning since proxy-get failed
             return PingResult(
                 ping_ms=tcp_ping_ms,  # Use TCP ping time
                 status=status,
@@ -87,7 +89,9 @@ class PingChecker:
         )
 
     @classmethod
-    async def _tcp_check(cls, server: str, port: int) -> tuple[bool, int | None]:
+    async def _tcp_check(
+        cls, server: str, port: int
+    ) -> tuple[bool, int | None]:
         """
         Perform basic TCP connectivity check with ping measurement.
         Tries to establish a connection and measures the time.
@@ -127,7 +131,11 @@ class PingChecker:
                 asyncio.open_connection(server, port),
                 timeout=cls.TIMEOUT,
             )
-            secret_bytes = bytes.fromhex(secret) if secret else b""
+            try:
+                secret_bytes = bytes.fromhex(secret) if secret else b""
+            except ValueError:
+                return False, None
+
             if secret_bytes.startswith(b"\xee"):
                 request = cls.PROXY_GET_REQUEST
             else:

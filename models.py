@@ -51,11 +51,13 @@ class ProxyBase(BaseModel):
     @field_validator("secret")
     @classmethod
     def validate_secret(cls, v: str) -> str:
-        """Validate secret is hex string (with optional domain fronting prefix)."""
+        """Validate secret is hex string with an even number of digits."""
         v = v.strip().lower()
 
-        if not re.match(r"^[a-f0-9]{32,512}$", v):
-            msg = "Secret must be 32+ hex characters"
+        if not re.match(r"^[a-f0-9]{32,512}$", v) or len(v) % 2 != 0:
+            msg = (
+                "Secret must be an even number of hex characters (32+ digits)."
+            )
             raise ValueError(msg)
         return v
 
