@@ -386,6 +386,37 @@ html.dark .theme-toggle .icon-moon {
   font-weight: 400;
 }
 
+.pin-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: var(--md-sys-shape-corner-full);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--md-sys-color-on-surface-variant);
+  cursor: pointer;
+  transition:
+    background var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard),
+    border-color var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard),
+    transform var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-emphasized);
+}
+
+.pin-button:hover {
+  background: var(--md-sys-color-surface-container);
+}
+
+.pin-button.pinned {
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  border-color: var(--md-sys-color-primary);
+}
+
+.pin-button:active {
+  transform: scale(0.97);
+}
+
 .ping-badge {
   display: inline-flex;
   align-items: center;

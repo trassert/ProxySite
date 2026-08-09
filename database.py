@@ -70,6 +70,7 @@ class Database:
                 tcp_ok INTEGER DEFAULT 0,
                 dns_ok INTEGER DEFAULT 0,
                 is_fallback INTEGER DEFAULT 0,
+                pinned INTEGER DEFAULT 0,
                 failed_since TEXT,
                 created_at TEXT NOT NULL,
                 last_checked TEXT,
@@ -128,6 +129,15 @@ class Database:
 
         # Backfill failed_since for existing proxies that are in failed status
         # This ensures old proxies are properly converted to the new format
+        if "pinned" not in cols:
+            try:
+                await self._connection.execute(
+                    "ALTER TABLE proxies ADD COLUMN pinned INTEGER DEFAULT 0"
+                )
+                await self._connection.commit()
+            except Exception:
+                pass
+
         if failed_since_added or "failed_since" in cols:
             try:
                 await self._connection.execute(
@@ -157,6 +167,7 @@ class Database:
             tcp_ok=bool(row["tcp_ok"]),
             dns_ok=bool(row["dns_ok"]),
             is_fallback=bool(row["is_fallback"]),
+            pinned=bool(row["pinned"]),
             tcp_ping_ms=row["tcp_ping_ms"],
             failed_since=datetime.fromisoformat(row["failed_since"])
             if row["failed_since"]
@@ -254,6 +265,17 @@ class Database:
         )
         row = await cursor.fetchone()
         return self._row_to_proxy(row) if row else None
+
+    async def set_proxy_pinned(self, proxy_id: int, pinned: bool) -> None:
+        """Set proxy pinned state."""
+        if not self._connection:
+            msg = "Database not connected"
+            raise RuntimeError(msg)
+        await self._connection.execute(
+            "UPDATE proxies SET pinned = ? WHERE id = ?",
+            (int(pinned), proxy_id),
+        )
+        await self._connection.commit()
 
     async def get_proxies(
         self,
@@ -371,14 +393,14 @@ class Database:
             msg = "Database not connected"
             raise RuntimeError(msg)
         cursor = await self._connection.execute(
-            "SELECT COUNT(*) as count FROM proxies WHERE dislikes >= ?",
+            "SELECT COUNT(*) as count FROM proxies WHERE dislikes >= ? AND pinned = 0",
             (min_dislikes,),
         )
         row = await cursor.fetchone()
         deleted_count = row["count"] if row else 0
         if deleted_count > 0:
             await self._connection.execute(
-                "DELETE FROM proxies WHERE dislikes >= ?",
+                "DELETE FROM proxies WHERE dislikes >= ? AND pinned = 0",
                 (min_dislikes,),
             )
             await self._connection.commit()
@@ -407,6 +429,7 @@ class Database:
             WHERE ping_status = 'failed'
               AND failed_since IS NOT NULL
               AND failed_since < ?
+              AND pinned = 0
             """,
             (cutoff,),
         )

@@ -9,6 +9,7 @@ CONFIG_PATH = Path("config.toml")
 DEFAULT_CONFIG = {
     "app": {
         "debug": False,
+        "password": "",
     },
     "logging": {
         "level": "INFO",
@@ -29,6 +30,7 @@ DEFAULT_CONFIG = {
 @dataclass
 class AppConfig:
     debug: bool = False
+    password: str = ""
 
 
 @dataclass
@@ -89,7 +91,10 @@ def load_config(path: Path = CONFIG_PATH) -> Config:
         rotation=str(config_data["logging"].get("rotation", "10 MB")),
         retention=str(config_data["logging"].get("retention", "7 days")),
     )
-    app = AppConfig(debug=bool(config_data["app"].get("debug", False)))
+    app = AppConfig(
+        debug=bool(config_data["app"].get("debug", False)),
+        password=str(config_data["app"].get("password", "")),
+    )
     return Config(app=app, logging=logging, telegram=telegram)
 
 

@@ -121,6 +121,18 @@
               <h2 class="proxy-server">{{ proxy.server }}<span
                   class="proxy-port">:{{ proxy.port }}</span></h2>
             </div>
+            <button
+              class="pin-button {% if proxy.pinned %}pinned{% endif %}"
+              onclick="togglePin({{ proxy.id }}, {{ 'false' if proxy.pinned else 'true' }})"
+              title="{% if proxy.pinned %}Unpin proxy{% else %}Pin proxy{% endif %}">
+              {% if proxy.pinned %}
+              <svg class="icon" viewBox="0 0 24 24"><path
+                  d="M12 2c-1.1 0-2 .9-2 2v5.17L6.41 11 5 9.59 10.17 4.42 12 2zm6 7.59L17.59 11 14 7.41V4c0-1.1-.9-2-2-2-1.1 0-2 .9-2 2v3.41L9.41 11 8 9.59l5-5 5 5zM12 22l-7-7 1.41-1.41L11 18.17V13h2v5.17l4.59-4.58L19 15l-7 7z" /></svg>
+              {% else %}
+              <svg class="icon" viewBox="0 0 24 24"><path
+                  d="M12 2c-1.1 0-2 .9-2 2v5.17L6.41 11 5 9.59 10.17 4.42 12 2zm6 7.59L17.59 11 14 7.41V4c0-1.1-.9-2-2-2-1.1 0-2 .9-2 2v3.41L9.41 11 8 9.59l5-5 5 5zm-6 12.41l-7-7 1.41-1.41L11 18.17V13h2v5.17l4.59-4.58L19 15l-7 7z" /></svg>
+              {% endif %}
+            </button>
             {% set badge_class = 'fallback' if proxy.is_fallback else
             proxy.ping_status.value %}
             <button class="ping-badge {{ badge_class }}"

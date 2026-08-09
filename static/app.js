@@ -560,6 +560,9 @@ function createProxyCard(proxy) {
       <div>
         <h2 class="proxy-server">${proxy.server}<span class="proxy-port">:${proxy.port}</span></h2>
       </div>
+      <button class="pin-button ${proxy.pinned ? 'pinned' : ''}" onclick="togglePin(${proxy.id}, ${proxy.pinned ? 'false' : 'true'})" title="${proxy.pinned ? 'Unpin proxy' : 'Pin proxy'}">
+        ${proxy.pinned ? '<svg class="icon" viewBox="0 0 24 24"><path d="M12 2c-1.1 0-2 .9-2 2v5.17L6.41 11 5 9.59 10.17 4.42 12 2zm6 7.59L17.59 11 14 7.41V4c0-1.1-.9-2-2-2-1.1 0-2 .9-2 2v3.41L9.41 11 8 9.59l5-5 5 5zM12 22l-7-7 1.41-1.41L11 18.17V13h2v5.17l4.59-4.58L19 15l-7 7z"/></svg>' : '<svg class="icon" viewBox="0 0 24 24"><path d="M12 2c-1.1 0-2 .9-2 2v5.17L6.41 11 5 9.59 10.17 4.42 12 2zm6 7.59L17.59 11 14 7.41V4c0-1.1-.9-2-2-2-1.1 0-2 .9-2 2v3.41L9.41 11 8 9.59l5-5 5 5zm-6 12.41l-7-7 1.41-1.41L11 18.17V13h2v5.17l4.59-4.58L19 15l-7 7z"/></svg>'}
+      </button>
       <button class="ping-badge ${badgeClass}" onclick="checkPing(${proxy.id})" title="Click to refresh">
         ${pingBadgeContent}
       </button>
@@ -616,6 +619,51 @@ function createProxyCard(proxy) {
   `;
 
   return card;
+}
+
+function togglePin(proxyId, pinned) {
+  const password = prompt('Enter proxy pin password from config.toml');
+  if (password === null) {
+    return;
+  }
+  setPin(proxyId, pinned, password);
+}
+
+async function setPin(proxyId, pinned, password) {
+  try {
+    const response = await fetch(`./api/proxies/${proxyId}/pin`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ password, pinned }),
+    });
+
+    if (!response.ok) {
+      const data = await response.json();
+      showSnackbar('Pin failed: ' + (data.detail || 'Invalid password'));
+      return;
+    }
+
+    const data = await response.json();
+    const card = document.querySelector(`[data-proxy-id="${proxyId}"]`);
+    if (!card) return;
+
+    const pinBtn = card.querySelector('.pin-button');
+    if (pinBtn) {
+      pinBtn.classList.toggle('pinned', data.pinned);
+      pinBtn.title = data.pinned ? 'Unpin proxy' : 'Pin proxy';
+      pinBtn.innerHTML = data.pinned ?
+        '<svg class="icon" viewBox="0 0 24 24"><path d="M12 2c-1.1 0-2 .9-2 2v5.17L6.41 11 5 9.59 10.17 4.42 12 2zm6 7.59L17.59 11 14 7.41V4c0-1.1-.9-2-2-2-1.1 0-2 .9-2 2v3.41L9.41 11 8 9.59l5-5 5 5zM12 22l-7-7 1.41-1.41L11 18.17V13h2v5.17l4.59-4.58L19 15l-7 7z"/></svg>' :
+        '<svg class="icon" viewBox="0 0 24 24"><path d="M12 2c-1.1 0-2 .9-2 2v5.17L6.41 11 5 9.59 10.17 4.42 12 2zm6 7.59L17.59 11 14 7.41V4c0-1.1-.9-2-2-2-1.1 0-2 .9-2 2v3.41L9.41 11 8 9.59l5-5 5 5zm-6 12.41l-7-7 1.41-1.41L11 18.17V13h2v5.17l4.59-4.58L19 15l-7 7z"/></svg>';
+      pinBtn.setAttribute('onclick', `togglePin(${proxyId}, ${data.pinned ? 'false' : 'true'})`);
+    }
+
+    showSnackbar(data.pinned ? 'Proxy pinned' : 'Proxy unpinned');
+  } catch (error) {
+    console.error('Pin error:', error);
+    showSnackbar('Network error');
+  }
 }
 
 function showQRCode(server, port, secret) {

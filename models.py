@@ -78,6 +78,7 @@ class ProxyInDB(ProxyBase):
     tcp_ok: bool = False
     dns_ok: bool = False
     is_fallback: bool = False
+    pinned: bool = False
     failed_since: datetime | None = None
     created_at: datetime
     last_checked: datetime | None = None
@@ -109,6 +110,13 @@ class VoteRequest(BaseModel):
 
     proxy_id: int
     vote_type: Literal["like", "dislike"]
+
+
+class PinRequest(BaseModel):
+    """Request model for pinning or unpinning a proxy."""
+
+    password: str = Field(..., min_length=1)
+    pinned: bool
 
 
 class VoteResponse(BaseModel):

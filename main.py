@@ -22,6 +22,7 @@ from models import (
     ParseLinksRequest,
     ParseLinksResponse,
     PingStatus,
+    PinRequest,
     ProxyCreate,
     ProxyListResponse,
     ProxyResponse,
@@ -305,6 +306,28 @@ async def vote(
         dislikes=dislikes,
         position=new_position,
     )
+
+
+@app.post("/api/proxies/{proxy_id}/pin")
+async def pin_proxy(
+    proxy_id: int,
+    data: PinRequest,
+) -> dict:
+    """Pin or unpin a proxy with password authentication."""
+    if not config.app.password:
+        raise HTTPException(
+            status_code=403,
+            detail="Pin password is not configured",
+        )
+    if data.password != config.app.password:
+        raise HTTPException(status_code=403, detail="Invalid password")
+
+    proxy = await db.get_proxy(proxy_id)
+    if not proxy:
+        raise HTTPException(status_code=404, detail="Proxy not found")
+
+    await db.set_proxy_pinned(proxy_id, data.pinned)
+    return {"success": True, "pinned": data.pinned}
 
 
 @app.get("/api/vote/{proxy_id}")
