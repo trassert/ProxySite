@@ -499,7 +499,7 @@ async function refreshProxyList(sortBy = 'likes') {
 
 function createProxyCard(proxy) {
   const card = document.createElement('article');
-  card.className = 'proxy-card';
+  card.className = `proxy-card${proxy.pinned ? ' pinned' : ''}`;
   card.dataset.proxyId = proxy.id;
 
   // Determine badge class based on status and fallback
@@ -560,9 +560,6 @@ function createProxyCard(proxy) {
       <div>
         <h2 class="proxy-server">${proxy.server}<span class="proxy-port">:${proxy.port}</span></h2>
       </div>
-      <button class="pin-button ${proxy.pinned ? 'pinned' : ''}" onclick="togglePin(${proxy.id}, ${proxy.pinned ? 'false' : 'true'})" title="${proxy.pinned ? 'Unpin proxy' : 'Pin proxy'}">
-        ${proxy.pinned ? '<svg class="icon" viewBox="0 0 24 24"><path d="M12 2c-1.1 0-2 .9-2 2v5.17L6.41 11 5 9.59 10.17 4.42 12 2zm6 7.59L17.59 11 14 7.41V4c0-1.1-.9-2-2-2-1.1 0-2 .9-2 2v3.41L9.41 11 8 9.59l5-5 5 5zM12 22l-7-7 1.41-1.41L11 18.17V13h2v5.17l4.59-4.58L19 15l-7 7z"/></svg>' : '<svg class="icon" viewBox="0 0 24 24"><path d="M12 2c-1.1 0-2 .9-2 2v5.17L6.41 11 5 9.59 10.17 4.42 12 2zm6 7.59L17.59 11 14 7.41V4c0-1.1-.9-2-2-2-1.1 0-2 .9-2 2v3.41L9.41 11 8 9.59l5-5 5 5zm-6 12.41l-7-7 1.41-1.41L11 18.17V13h2v5.17l4.59-4.58L19 15l-7 7z"/></svg>'}
-      </button>
       <button class="ping-badge ${badgeClass}" onclick="checkPing(${proxy.id})" title="Click to refresh">
         ${pingBadgeContent}
       </button>
@@ -589,6 +586,9 @@ function createProxyCard(proxy) {
         >
           <svg class="icon" viewBox="0 0 24 24"><path d="M15 3H6c-.83 0-1.54.5-1.84 1.22l-3.02 7.05c-.09.23-.14.47-.14.73v2c0 1.1.9 2 2 2h6.31l-.95 4.57-.03.32c0 .41.17.79.44 1.06L9.83 23l6.59-6.59c.36-.36.58-.86.58-1.41V5c0-1.1-.9-2-2-2zm4 0v12h4V3h-4z"/></svg>
           <span class="count">${proxy.dislikes}</span>
+        </button>
+        <button class="pin-button ${proxy.pinned ? 'pinned' : ''}" onclick="togglePin(${proxy.id}, ${proxy.pinned ? 'false' : 'true'})" title="${proxy.pinned ? 'Unpin proxy' : 'Pin proxy'}">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M12 2l-2 2 1.5 1.5L7 9l1.5 1.5L12 7l3.5 3.5L17 9l-4.5-3.5L14 4l-2-2zm-1 11.5h2V22h-2v-8.5z"/></svg>
         </button>
       </div>
 
@@ -622,7 +622,7 @@ function createProxyCard(proxy) {
 }
 
 function togglePin(proxyId, pinned) {
-  const password = prompt('Enter proxy pin password from config.toml');
+  const password = prompt('Enter admin password');
   if (password === null) {
     return;
   }

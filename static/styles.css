@@ -358,7 +358,13 @@ html.dark .theme-toggle .icon-moon {
   box-shadow: var(--md-sys-elevation-1);
   transition:
     transform var(--md-sys-motion-duration-medium) var(--md-sys-motion-easing-emphasized),
-    box-shadow var(--md-sys-motion-duration-medium) var(--md-sys-motion-easing-emphasized);
+    box-shadow var(--md-sys-motion-duration-medium) var(--md-sys-motion-easing-emphasized),
+    border-color var(--md-sys-motion-duration-medium) var(--md-sys-motion-easing-emphasized);
+}
+
+.proxy-card.pinned {
+  border: 1px solid rgba(124, 77, 255, 0.18);
+  box-shadow: 0 0 0 1px transparent, 0 18px 40px rgba(124, 77, 255, 0.08);
 }
 
 .proxy-card:hover {
@@ -560,6 +566,37 @@ html.dark .ping-badge.fallback {
 }
 
 .link-btn:active {
+  transform: scale(0.97);
+}
+
+.pin-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--md-sys-shape-corner-full);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--md-sys-color-on-surface-variant);
+  cursor: pointer;
+  transition:
+    background var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard),
+    border-color var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-standard),
+    transform var(--md-sys-motion-duration-short) var(--md-sys-motion-easing-emphasized);
+}
+
+.pin-button:hover {
+  background: var(--md-sys-color-surface-container);
+}
+
+.pin-button.pinned {
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+  border-color: var(--md-sys-color-primary);
+}
+
+.pin-button:active {
   transform: scale(0.97);
 }
 
