@@ -288,7 +288,8 @@ class Database:
             msg = "Database not connected"
             raise RuntimeError(msg)
         order_clause = {
-            SortBy.LIKES: "likes - dislikes DESC, likes DESC",
+            # Ensure pinned proxies appear first in Top (likes) view
+            SortBy.LIKES: "pinned DESC, likes - dislikes DESC, likes DESC",
             SortBy.PING: """
                 CASE
                     WHEN ping_status = 'ok' AND is_fallback = 0 THEN 0
