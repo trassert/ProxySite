@@ -3,7 +3,7 @@ name: Ruff
 on:
   push:
     branches:
-      - bot
+      - master
 
 jobs:
   format:
