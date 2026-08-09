@@ -17,7 +17,6 @@ from fastapi.templating import Jinja2Templates
 from config import config, logger
 from database import db
 from http_logger import RequestLogger
-from performance import RateLimiter, cache_store
 from models import (
     ParseLinksRequest,
     ParseLinksResponse,
@@ -32,6 +31,7 @@ from models import (
     VoteResponse,
 )
 from parser import ProxyLinkParser
+from performance import RateLimiter, cache_store
 from ping import PingChecker
 from telethon_client import TelegramProxyListener
 
@@ -176,9 +176,7 @@ async def index(
     sort: str = "likes",
 ) -> Response:
     """Main page with proxy list."""
-    sort_by = (
-        SortBy(sort) if sort in [s.value for s in SortBy] else SortBy.LIKES
-    )
+    sort_by = SortBy(sort) if sort in [s.value for s in SortBy] else SortBy.LIKES
     proxies = await db.get_proxies(sort_by=sort_by, limit=100)
     total = await db.get_total_count()
     stats = await db.get_stats()
@@ -206,9 +204,7 @@ async def list_proxies(
     offset: int = 0,
 ) -> ProxyListResponse:
     """Get list of proxies."""
-    sort_by = (
-        SortBy(sort) if sort in [s.value for s in SortBy] else SortBy.LIKES
-    )
+    sort_by = SortBy(sort) if sort in [s.value for s in SortBy] else SortBy.LIKES
     proxies = await db.get_proxies(sort_by=sort_by, limit=limit, offset=offset)
     total = await db.get_total_count()
 
@@ -293,9 +289,7 @@ async def vote(
     # Return new position when liked for dynamic re-sorting
     new_position = None
     if data.vote_type == "like":
-        proxies = await db.get_proxies(
-            sort_by=SortBy.LIKES, limit=100, offset=0
-        )
+        proxies = await db.get_proxies(sort_by=SortBy.LIKES, limit=100, offset=0)
         new_position = next(
             (i for i, p in enumerate(proxies) if p.id == data.proxy_id), -1
         )
@@ -349,9 +343,7 @@ async def get_stats() -> StatsResponse:
     return StatsResponse(**stats)
 
 
-async def ping_proxy_async(
-    proxy_id: int, server: str, port: int, secret: str
-) -> None:
+async def ping_proxy_async(proxy_id: int, server: str, port: int, secret: str) -> None:
     """Background task to ping a newly added proxy."""
     try:
         result = await PingChecker.check(server, port, secret)
@@ -375,7 +367,6 @@ async def ping_proxy_async(
 @app.post("/api/add-proxy")
 async def add_proxy_api(data: dict) -> dict:
     """Add proxy via API (JSON)."""
-    added_proxies = []
 
     try:
         if "links" in data and data["links"].strip():

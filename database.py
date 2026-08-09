@@ -406,9 +406,7 @@ class Database:
             )
             await self._connection.commit()
             now = datetime.utcnow().isoformat()
-            await self._connection.execute(
-                "UPDATE stats SET last_cleanup = ?", (now,)
-            )
+            await self._connection.execute("UPDATE stats SET last_cleanup = ?", (now,))
             await self._connection.commit()
         return deleted_count
 
@@ -445,9 +443,7 @@ class Database:
         if deleted_count > 0:
             await self._connection.commit()
             now = datetime.utcnow().isoformat()
-            await self._connection.execute(
-                "UPDATE stats SET last_cleanup = ?", (now,)
-            )
+            await self._connection.execute("UPDATE stats SET last_cleanup = ?", (now,))
             await self._connection.commit()
         return deleted_count
 
@@ -474,9 +470,7 @@ class Database:
             "total_proxies": row["total"] or 0,
             "total_likes": row["total_likes"] or 0,
             "total_dislikes": row["total_dislikes"] or 0,
-            "avg_ping_ms": round(row["avg_ping"], 1)
-            if row["avg_ping"]
-            else None,
+            "avg_ping_ms": round(row["avg_ping"], 1) if row["avg_ping"] else None,
             "online_count": row["online"] or 0,
             "last_cleanup": datetime.fromisoformat(stats_row["last_cleanup"])
             if stats_row and stats_row["last_cleanup"]
@@ -507,10 +501,7 @@ class Database:
             (cutoff,),
         )
         rows = await cursor.fetchall()
-        return [
-            (row["id"], row["server"], row["port"], row["secret"])
-            for row in rows
-        ]
+        return [(row["id"], row["server"], row["port"], row["secret"]) for row in rows]
 
 
 db = Database()
