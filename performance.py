@@ -201,58 +201,10 @@ class ConnectionPool:
             self.connections.append(conn)
             return conn
         # Wait for available connection
-        while not self.available:
+        while not self.available:  # noqa: ASYNC110
             await asyncio.sleep(0.01)
         return self.available.pop()
 
     async def release(self, conn):
         """Return connection to pool."""
         self.available.append(conn)
-
-
-# Optimization recommendations for database.py:
-OPTIMIZATION_TIPS = """
-## Оптимизация БД для большого наплыва:
-
-1. **Индексы (обязательно)**:
-   ```sql
-   CREATE INDEX idx_likes ON proxies(likes DESC);
-   CREATE INDEX idx_dislikes ON proxies(dislikes DESC);
-   CREATE INDEX idx_status ON proxies(ping_status);
-   CREATE INDEX idx_created ON proxies(created_at DESC);
-   ```
-
-2. **Connection Pool** (в database.py):
-   - Используй asyncpg с pool_size=20, max_cached_statement_lifetime=300
-   - Пример: `asyncpg.create_pool(dsn, min_size=5, max_size=20)`
-
-3. **批处理 (Batch)** для голосов:
-   - Вместо INSERT один за другим, группируй в batch INSERT VALUES (...), (...), (...)
-   - Используй `batch_processor` из этого файла
-
-4. **Кэширование**:
-   - Кэшируй список прокси на 10-30 сек (data не меняется часто)
-   - Кэшируй статистику на 1 минуту
-   - Используй `@cached(ttl_seconds=30)` на async функциях
-
-5. **Query оптимизация**:
-   - Используй `LIMIT` при выборе прокси (не вся база)
-   - Используй EXPLAIN ANALYZE для поиска узких мест
-   - Избегай N+1 queries - используй JOINs
-
-6. **Rate Limiting**:
-   - Уже добавлен в коде (RateLimiter middleware)
-   - Настроить LIMITS под нужные тебе значения
-
-7. **Логирование**:
-   - Не логируй каждый запрос (уже оптимизировано в http_logger.py)
-   - Используй async логирование с `enqueue=True` (уже в config.py)
-
-8. **Компрессия**:
-   - Добавь GZIP для ответов (FastAPI автоматически)
-   - Минифицируй статические файлы
-
-9. **Асинхронность**:
-   - Все операции в БД должны быть async
-   - Используй `asyncio.gather()` для параллельных операций
-"""

@@ -6,7 +6,7 @@ Provides clean, filtered logging of HTTP requests without spam.
 import re
 import time
 from collections import defaultdict, deque
-from typing import Callable
+from collections.abc import Callable
 
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
