@@ -18,7 +18,7 @@ import os
 import random
 import struct
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from urllib.parse import parse_qs, urlparse
 
 from models import PingStatus
@@ -27,7 +27,7 @@ PING_OK_THRESHOLD = 500
 PING_WARNING_THRESHOLD = 1500
 
 
-class ProxyMode(str, Enum):
+class ProxyMode(StrEnum):
     DEFAULT = "default"
     OBFUSCATED = "obfuscated"
     FAKE_TLS = "fake_tls"
@@ -73,7 +73,7 @@ class PingChecker:
     RESERVED_NONCE_FIRST_CHARS = [b"\xef"]
     RESERVED_NONCE_BEGININGS = [
         b"\x48\x45\x41\x44",  # HEAD
-        b"\x50\x4F\x53\x54",  # POST
+        b"\x50\x4f\x53\x54",  # POST
         b"\x47\x45\x54\x20",  # GET
         b"\xee\xee\xee\xee",
         b"\xdd\xdd\xdd\xdd",
@@ -220,7 +220,7 @@ class PingChecker:
                 # Server should respond with 64 bytes
                 if len(response) >= 8:
                     return True, ping_ms
-            except (TimeoutError, asyncio.TimeoutError):
+            except TimeoutError:
                 # Connection accepted but no response yet - still valid
                 if not writer.is_closing():
                     return True, ping_ms
@@ -264,34 +264,34 @@ class PingChecker:
             # Default: use secure protocol
             proto_tag = cls.PROTO_TAG_SECURE
 
-        rnd[cls.PROTO_TAG_POS:cls.PROTO_TAG_POS + 4] = proto_tag
+        rnd[cls.PROTO_TAG_POS : cls.PROTO_TAG_POS + 4] = proto_tag
 
         # Set DC index (random valid DC 1-5)
         dc_idx = random.randint(1, 5)
-        rnd[cls.DC_IDX_POS:cls.DC_IDX_POS + 4] = struct.pack("<I", dc_idx)
+        rnd[cls.DC_IDX_POS : cls.DC_IDX_POS + 4] = struct.pack("<I", dc_idx)
 
         # Extract encryption key and IV (bytes 8-56, reversed)
-        dec_key_and_iv = rnd[cls.SKIP_LEN:cls.SKIP_LEN + cls.KEY_LEN + cls.IV_LEN][::-1]
-        dec_key = dec_key_and_iv[:cls.KEY_LEN]
-        dec_iv = dec_key_and_iv[cls.KEY_LEN:]
+        dec_key_and_iv = rnd[cls.SKIP_LEN : cls.SKIP_LEN + cls.KEY_LEN + cls.IV_LEN][
+            ::-1
+        ]
+        dec_key_and_iv[: cls.KEY_LEN]
+        dec_key_and_iv[cls.KEY_LEN :]
 
         # For obfuscated handshake, we encrypt the packet itself
         # Use the same key/iv for encryption (reversed back)
-        enc_key_and_iv = rnd[cls.SKIP_LEN:cls.SKIP_LEN + cls.KEY_LEN + cls.IV_LEN]
-        enc_key = enc_key_and_iv[:cls.KEY_LEN]
-        enc_iv = enc_key_and_iv[cls.KEY_LEN:]
+        enc_key_and_iv = rnd[cls.SKIP_LEN : cls.SKIP_LEN + cls.KEY_LEN + cls.IV_LEN]
+        enc_key = enc_key_and_iv[: cls.KEY_LEN]
+        enc_iv = enc_key_and_iv[cls.KEY_LEN :]
 
         # Encrypt from position 56 onwards (proto_tag and dc_idx)
         encrypted_part = cls._aes_ctr_encrypt(
-            bytes(rnd[cls.PROTO_TAG_POS:]),
+            bytes(rnd[cls.PROTO_TAG_POS :]),
             enc_key,
             int.from_bytes(enc_iv, "big"),
         )
 
         # Combine: first 56 bytes unchanged + encrypted part
-        rnd_enc = bytes(rnd[:cls.PROTO_TAG_POS]) + encrypted_part
-
-        return rnd_enc
+        return bytes(rnd[: cls.PROTO_TAG_POS]) + encrypted_part
 
     @classmethod
     def _aes_ctr_encrypt(cls, data: bytes, key: bytes, iv: int) -> bytes:
@@ -322,7 +322,9 @@ class PingChecker:
 
             ctr = pyaes.Counter(iv)
             aes = pyaes.AESModeOfOperationCTR(key, ctr)
-            return b"".join(aes.encrypt(data[i:i + 16]) for i in range(0, len(data), 16))
+            return b"".join(
+                aes.encrypt(data[i : i + 16]) for i in range(0, len(data), 16)
+            )
         except ImportError:
             # Last resort: XOR with key (not secure but allows ping to work)
             result = bytearray()
@@ -421,8 +423,12 @@ class PingChecker:
 
             if name:
                 server_name_entry = struct.pack("!BH", 0, len(name)) + name
-                server_name_list = struct.pack("!H", len(server_name_entry)) + server_name_entry
-                extensions += struct.pack("!HH", 0x0000, len(server_name_list)) + server_name_list
+                server_name_list = (
+                    struct.pack("!H", len(server_name_entry)) + server_name_entry
+                )
+                extensions += (
+                    struct.pack("!HH", 0x0000, len(server_name_list)) + server_name_list
+                )
 
         # Random padding extension (GREASE)
         if random.random() < 0.5:
@@ -505,8 +511,7 @@ class PingChecker:
                 pass
 
         value = value.strip().lower()
-        if value.startswith("0x"):
-            value = value[2:]
+        value = value.removeprefix("0x")
 
         value = "".join(value.split())
         if not value:
