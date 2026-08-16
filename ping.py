@@ -6,7 +6,7 @@ Supports:
 - obfuscated proxies with "dd" secrets;
 - fake-tls proxies with "ee" secrets.
 
-Uses protocol-specific probes first and falls back to basic TCP check.
+Uses valid MTProto handshake packets to bypass replay protection and DPI.
 """
 
 from __future__ import annotations
@@ -15,10 +15,10 @@ import asyncio
 import contextlib
 import ipaddress
 import os
+import random
 import struct
-import time
 from dataclasses import dataclass
-from enum import StrEnum
+from enum import Enum
 from urllib.parse import parse_qs, urlparse
 
 from models import PingStatus
@@ -27,7 +27,7 @@ PING_OK_THRESHOLD = 500
 PING_WARNING_THRESHOLD = 1500
 
 
-class ProxyMode(StrEnum):
+class ProxyMode(str, Enum):
     DEFAULT = "default"
     OBFUSCATED = "obfuscated"
     FAKE_TLS = "fake_tls"
@@ -41,8 +41,8 @@ class PingResult:
     status: PingStatus
     tcp_ok: bool
     dns_ok: bool
-    is_fallback: bool  # True if TCP fallback was used
-    tcp_ping_ms: int | None = None  # TCP ping time when fallback is used
+    is_fallback: bool
+    tcp_ping_ms: int | None = None
 
 
 _NETWORK_ERRORS = (
@@ -58,15 +58,30 @@ class PingChecker:
     """Async ping checker for default, obfuscated and fake-tls MTProto proxies."""
 
     TIMEOUT: float = 5.0
+    HANDSHAKE_LEN: int = 64
+    PROTO_TAG_POS: int = 56
+    DC_IDX_POS: int = 60
+    SKIP_LEN: int = 8
+    KEY_LEN: int = 32
+    IV_LEN: int = 16
 
-    # If an obfuscated proxy accepts connection but does not answer immediately,
-    # wait this long before treating connection as alive.
-    OBFUSCATED_NO_RESPONSE_TIMEOUT: float = 1.0
+    PROTO_TAG_ABRIDGED = b"\xef\xef\xef\xef"
+    PROTO_TAG_INTERMEDIATE = b"\xee\xee\xee\xee"
+    PROTO_TAG_SECURE = b"\xdd\xdd\xdd\xdd"
 
-    # Legacy request kept for backward compatibility and default proxies.
-    PROXY_GET_REQUEST = b"\x00\x01\x00\x01\x00\x00\x00\x00"
+    # Reserved patterns that must NOT appear in handshake
+    RESERVED_NONCE_FIRST_CHARS = [b"\xef"]
+    RESERVED_NONCE_BEGININGS = [
+        b"\x48\x45\x41\x44",  # HEAD
+        b"\x50\x4F\x53\x54",  # POST
+        b"\x47\x45\x54\x20",  # GET
+        b"\xee\xee\xee\xee",
+        b"\xdd\xdd\xdd\xdd",
+        b"\x16\x03\x01\x02",  # TLS
+    ]
+    RESERVED_NONCE_CONTINUES = [b"\x00\x00\x00\x00"]
 
-    # Common cipher suites for fake-tls ClientHello.
+    # Realistic TLS cipher suites (matching modern browsers)
     TLS_CIPHER_SUITES = (
         0x1301,  # TLS_AES_128_GCM_SHA256
         0x1302,  # TLS_AES_256_GCM_SHA384
@@ -88,10 +103,7 @@ class PingChecker:
     async def check(
         cls, server: str, port: int, secret: str | None = None
     ) -> PingResult:
-        """
-        Check proxy availability using the best protocol probe for secret type.
-        Falls back to basic TCP check if protocol probe fails.
-        """
+        """Check proxy availability using protocol-specific handshake."""
         secret = cls._normalize_secret(secret)
         mode = cls._detect_mode(secret)
 
@@ -99,11 +111,7 @@ class PingChecker:
         protocol_deadline = loop.time() + cls.TIMEOUT
 
         proxy_get_ok, ping_ms = await cls._proxy_get_check(
-            server,
-            port,
-            secret,
-            mode,
-            protocol_deadline,
+            server, port, secret, mode, protocol_deadline
         )
 
         if proxy_get_ok:
@@ -130,13 +138,7 @@ class PingChecker:
         mode: ProxyMode | None = None,
         deadline: float | None = None,
     ) -> tuple[bool, int | None]:
-        """
-        Protocol-level check dispatcher.
-
-        Kept for backward compatibility. Old signature:
-            _proxy_get_check(server, port, secret)
-        still works.
-        """
+        """Protocol-level check dispatcher."""
         loop = asyncio.get_running_loop()
         if deadline is None:
             deadline = loop.time() + cls.TIMEOUT
@@ -146,17 +148,12 @@ class PingChecker:
             mode = cls._detect_mode(secret)
 
         if mode == ProxyMode.FAKE_TLS:
-            checks = (
-                cls._fake_tls_check,
-                cls._legacy_proxy_get_check,
-            )
+            checks = (cls._fake_tls_check,)
         elif mode == ProxyMode.OBFUSCATED:
-            checks = (
-                cls._obfuscated_check,
-                cls._legacy_proxy_get_check,
-            )
+            checks = (cls._obfuscated_handshake_check,)
         else:
-            checks = (cls._legacy_proxy_get_check,)
+            # Default mode also uses obfuscated handshake (without secret)
+            checks = (cls._obfuscated_handshake_check,)
 
         for check in checks:
             remaining = deadline - loop.time()
@@ -170,6 +167,170 @@ class PingChecker:
         return False, None
 
     @classmethod
+    async def _obfuscated_handshake_check(
+        cls,
+        server: str,
+        port: int,
+        secret: str | None = None,
+        *,
+        timeout: float | None = None,
+    ) -> tuple[bool, int | None]:
+        """
+        Valid MTProto obfuscated handshake for dd-proxies and default mode.
+        Generates proper 64-byte init packet with AES-CTR encryption.
+        """
+        loop = asyncio.get_running_loop()
+        deadline = cls._deadline(timeout)
+        start = loop.time()
+        writer = None
+
+        try:
+            remaining = deadline - loop.time()
+            if remaining <= 0:
+                return False, None
+
+            reader, writer = await asyncio.wait_for(
+                asyncio.open_connection(server, port),
+                timeout=remaining,
+            )
+
+            # Generate valid handshake
+            handshake = cls._build_obfuscated_handshake(secret)
+
+            writer.write(handshake)
+
+            remaining = deadline - loop.time()
+            if remaining <= 0:
+                return False, None
+
+            await asyncio.wait_for(writer.drain(), timeout=remaining)
+
+            ping_ms = int((loop.time() - start) * 1000)
+
+            # Wait for server response (encrypted handshake response)
+            remaining = deadline - loop.time()
+            if remaining <= 0:
+                return False, None
+
+            try:
+                response = await asyncio.wait_for(
+                    reader.read(64),
+                    timeout=min(remaining, 1.0),
+                )
+                # Server should respond with 64 bytes
+                if len(response) >= 8:
+                    return True, ping_ms
+            except (TimeoutError, asyncio.TimeoutError):
+                # Connection accepted but no response yet - still valid
+                if not writer.is_closing():
+                    return True, ping_ms
+
+            return False, None
+
+        except _NETWORK_ERRORS:
+            return False, None
+        finally:
+            await cls._close_writer(writer)
+
+    @classmethod
+    def _build_obfuscated_handshake(cls, secret: str | None) -> bytes:
+        """Build valid 64-byte MTProto obfuscated handshake."""
+        # Generate random 64-byte array
+        rnd = bytearray(os.urandom(cls.HANDSHAKE_LEN))
+
+        # Ensure first bytes don't match reserved patterns
+        while True:
+            if rnd[:1] in cls.RESERVED_NONCE_FIRST_CHARS:
+                rnd[:1] = os.urandom(1)
+                continue
+            if rnd[:4] in cls.RESERVED_NONCE_BEGININGS:
+                rnd[:4] = os.urandom(4)
+                continue
+            if rnd[4:8] in cls.RESERVED_NONCE_CONTINUES:
+                rnd[4:8] = os.urandom(4)
+                continue
+            break
+
+        # Set protocol tag based on secret type
+        if secret:
+            secret_bytes = bytes.fromhex(secret)
+            if secret_bytes.startswith(b"\xdd"):
+                proto_tag = cls.PROTO_TAG_SECURE
+            elif secret_bytes.startswith(b"\xee"):
+                proto_tag = cls.PROTO_TAG_INTERMEDIATE
+            else:
+                proto_tag = cls.PROTO_TAG_ABRIDGED
+        else:
+            # Default: use secure protocol
+            proto_tag = cls.PROTO_TAG_SECURE
+
+        rnd[cls.PROTO_TAG_POS:cls.PROTO_TAG_POS + 4] = proto_tag
+
+        # Set DC index (random valid DC 1-5)
+        dc_idx = random.randint(1, 5)
+        rnd[cls.DC_IDX_POS:cls.DC_IDX_POS + 4] = struct.pack("<I", dc_idx)
+
+        # Extract encryption key and IV (bytes 8-56, reversed)
+        dec_key_and_iv = rnd[cls.SKIP_LEN:cls.SKIP_LEN + cls.KEY_LEN + cls.IV_LEN][::-1]
+        dec_key = dec_key_and_iv[:cls.KEY_LEN]
+        dec_iv = dec_key_and_iv[cls.KEY_LEN:]
+
+        # For obfuscated handshake, we encrypt the packet itself
+        # Use the same key/iv for encryption (reversed back)
+        enc_key_and_iv = rnd[cls.SKIP_LEN:cls.SKIP_LEN + cls.KEY_LEN + cls.IV_LEN]
+        enc_key = enc_key_and_iv[:cls.KEY_LEN]
+        enc_iv = enc_key_and_iv[cls.KEY_LEN:]
+
+        # Encrypt from position 56 onwards (proto_tag and dc_idx)
+        encrypted_part = cls._aes_ctr_encrypt(
+            bytes(rnd[cls.PROTO_TAG_POS:]),
+            enc_key,
+            int.from_bytes(enc_iv, "big"),
+        )
+
+        # Combine: first 56 bytes unchanged + encrypted part
+        rnd_enc = bytes(rnd[:cls.PROTO_TAG_POS]) + encrypted_part
+
+        return rnd_enc
+
+    @classmethod
+    def _aes_ctr_encrypt(cls, data: bytes, key: bytes, iv: int) -> bytes:
+        """Simple AES-CTR encryption using pycryptodome or cryptography."""
+        try:
+            # Try pycryptodome first
+            from Crypto.Cipher import AES
+
+            cipher = AES.new(key, AES.MODE_CTR, nonce=iv.to_bytes(8, "big"))
+            return cipher.encrypt(data)
+        except ImportError:
+            pass
+
+        try:
+            # Try cryptography library
+            from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+
+            nonce = iv.to_bytes(16, "big")
+            cipher = Cipher(algorithms.AES(key), modes.CTR(nonce))
+            encryptor = cipher.encryptor()
+            return encryptor.update(data) + encryptor.finalize()
+        except ImportError:
+            pass
+
+        # Fallback: use pyaes (pure Python)
+        try:
+            import pyaes
+
+            ctr = pyaes.Counter(iv)
+            aes = pyaes.AESModeOfOperationCTR(key, ctr)
+            return b"".join(aes.encrypt(data[i:i + 16]) for i in range(0, len(data), 16))
+        except ImportError:
+            # Last resort: XOR with key (not secure but allows ping to work)
+            result = bytearray()
+            for i, byte in enumerate(data):
+                result.append(byte ^ key[i % len(key)])
+            return bytes(result)
+
+    @classmethod
     async def _fake_tls_check(
         cls,
         server: str,
@@ -179,10 +340,7 @@ class PingChecker:
         timeout: float | None = None,
     ) -> tuple[bool, int | None]:
         """
-        Fake-tls probe.
-
-        Parses domain from an ee-secret and sends a minimal TLS ClientHello.
-        A valid TLS record from server is treated as protocol-level success.
+        Fake-tls probe with randomized ClientHello to avoid JA3 detection.
         """
         try:
             domain = cls._extract_tls_domain(secret)
@@ -214,31 +372,23 @@ class PingChecker:
             if remaining <= 0:
                 return False, None
 
-            await asyncio.wait_for(
-                writer.drain(),
-                timeout=max(0.001, remaining),
-            )
+            await asyncio.wait_for(writer.drain(), timeout=remaining)
 
             remaining = deadline - loop.time()
             if remaining <= 0:
                 return False, None
 
-            header = await asyncio.wait_for(
-                reader.read(5),
-                timeout=remaining,
-            )
+            header = await asyncio.wait_for(reader.read(5), timeout=remaining)
 
             ping_ms = int((loop.time() - start) * 1000)
 
-            # TLS record header:
-            # type, version_major, version_minor, length(2)
+            # TLS record validation
             if len(header) < 5:
                 return False, None
 
             content_type = header[0]
             version_major = header[1]
 
-            # Accept handshake or alert records.
             if version_major != 0x03 or content_type not in (0x15, 0x16):
                 return False, None
 
@@ -252,148 +402,54 @@ class PingChecker:
             await cls._close_writer(writer)
 
     @classmethod
-    async def _obfuscated_check(
-        cls,
-        server: str,
-        port: int,
-        secret: str | None = None,
-        *,
-        timeout: float | None = None,
-    ) -> tuple[bool, int | None]:
-        """
-        Obfuscated dd-proxy probe.
+    def _build_tls_client_hello(cls, server_name: str | None) -> bytes:
+        """Build randomized TLS ClientHello to avoid JA3 fingerprinting."""
+        # Randomize cipher order slightly
+        ciphers = list(cls.TLS_CIPHER_SUITES)
+        if random.random() < 0.3:
+            # Occasionally shuffle last few ciphers
+            ciphers[-5:] = random.sample(ciphers[-5:], len(ciphers[-5:]))
 
-        Full MTProto handshake without Telegram-side keys is not always possible,
-        so this is a heuristic probe:
-        - if server answers, OK;
-        - if server accepts connection and does not reset it immediately, OK.
-        """
-        payload = cls._build_obfuscated_request(secret)
+        extensions = b""
 
-        loop = asyncio.get_running_loop()
-        deadline = cls._deadline(timeout)
-        start = loop.time()
-        writer = None
-
-        try:
-            remaining = deadline - loop.time()
-            if remaining <= 0:
-                return False, None
-
-            reader, writer = await asyncio.wait_for(
-                asyncio.open_connection(server, port),
-                timeout=remaining,
-            )
-
-            writer.write(payload)
-
-            remaining = deadline - loop.time()
-            if remaining <= 0:
-                return False, None
-
-            await asyncio.wait_for(
-                writer.drain(),
-                timeout=max(0.001, remaining),
-            )
-
-            # Measure ping right after successful connect + write.
-            ping_ms = int((loop.time() - start) * 1000)
-
-            remaining = deadline - loop.time()
-            wait_timeout = min(cls.OBFUSCATED_NO_RESPONSE_TIMEOUT, remaining)
-
-            if wait_timeout <= 0:
-                if writer.is_closing():
-                    return False, None
-                return True, ping_ms
-
+        # SNI extension
+        if server_name and not cls._is_ip(server_name):
             try:
-                data = await asyncio.wait_for(
-                    reader.read(8),
-                    timeout=wait_timeout,
-                )
-            except TimeoutError:
-                # No immediate answer, but connection is still alive.
-                if writer.is_closing():
-                    return False, None
-                return True, ping_ms
+                name = server_name.encode("idna")
+            except UnicodeError:
+                name = server_name.encode("ascii", "ignore")
 
-            if data:
-                return True, ping_ms
+            if name:
+                server_name_entry = struct.pack("!BH", 0, len(name)) + name
+                server_name_list = struct.pack("!H", len(server_name_entry)) + server_name_entry
+                extensions += struct.pack("!HH", 0x0000, len(server_name_list)) + server_name_list
 
-            # EOF: server closed connection immediately.
-            return False, None
+        # Random padding extension (GREASE)
+        if random.random() < 0.5:
+            grease_ext = struct.pack("!HH", random.randint(0x0A0A, 0xFAFA), 0)
+            extensions += grease_ext
 
-        except _NETWORK_ERRORS:
-            return False, None
-        finally:
-            await cls._close_writer(writer)
+        random_bytes = os.urandom(32)
 
-    @classmethod
-    async def _legacy_proxy_get_check(
-        cls,
-        server: str,
-        port: int,
-        secret: str | None = None,
-        *,
-        timeout: float | None = None,
-    ) -> tuple[bool, int | None]:
-        """
-        Old/default proxy-get check.
+        cipher_bytes = b"".join(struct.pack("!H", cipher) for cipher in ciphers)
+        cipher_suites = struct.pack("!H", len(cipher_bytes)) + cipher_bytes
 
-        Kept for backward compatibility and default secrets.
-        """
-        request = cls._build_legacy_request(secret)
-        if request is None:
-            return False, None
+        # ClientHello
+        client_hello = (
+            b"\x03\x03"
+            + random_bytes
+            + b"\x00"
+            + cipher_suites
+            + b"\x01\x00"
+            + struct.pack("!H", len(extensions))
+            + extensions
+        )
 
-        loop = asyncio.get_running_loop()
-        deadline = cls._deadline(timeout)
-        start = loop.time()
-        writer = None
+        handshake = b"\x01" + struct.pack("!I", len(client_hello))[1:] + client_hello
 
-        try:
-            remaining = deadline - loop.time()
-            if remaining <= 0:
-                return False, None
-
-            reader, writer = await asyncio.wait_for(
-                asyncio.open_connection(server, port),
-                timeout=remaining,
-            )
-
-            writer.write(request)
-
-            remaining = deadline - loop.time()
-            if remaining <= 0:
-                return False, None
-
-            await asyncio.wait_for(
-                writer.drain(),
-                timeout=max(0.001, remaining),
-            )
-
-            remaining = deadline - loop.time()
-            if remaining <= 0:
-                return False, None
-
-            response = await asyncio.wait_for(
-                reader.read(8),
-                timeout=remaining,
-            )
-
-            ping_ms = int((loop.time() - start) * 1000)
-
-            # Old behavior: any 4+ bytes response is treated as success.
-            if len(response) >= 4:
-                return True, ping_ms
-
-            return False, None
-
-        except _NETWORK_ERRORS:
-            return False, None
-        finally:
-            await cls._close_writer(writer)
+        # TLS record with randomized version
+        tls_version = random.choice([b"\x03\x01", b"\x03\x03"])
+        return b"\x16" + tls_version + struct.pack("!H", len(handshake)) + handshake
 
     @classmethod
     async def _tcp_check(
@@ -403,9 +459,7 @@ class PingChecker:
         *,
         timeout: float | None = None,
     ) -> tuple[bool, int | None]:
-        """
-        Basic TCP connectivity check with ping measurement.
-        """
+        """Basic TCP connectivity check."""
         loop = asyncio.get_running_loop()
         deadline = cls._deadline(timeout)
         writer = None
@@ -431,94 +485,8 @@ class PingChecker:
             await cls._close_writer(writer)
 
     @classmethod
-    def _build_legacy_request(cls, secret: str | None) -> bytes | None:
-        """Build legacy proxy-get request compatible with old behavior."""
-        if not secret:
-            return cls.PROXY_GET_REQUEST
-
-        try:
-            secret_bytes = bytes.fromhex(secret)
-        except ValueError:
-            return None
-
-        if secret_bytes.startswith(b"\xee"):
-            return cls.PROXY_GET_REQUEST
-
-        padding = (
-            secret_bytes[:56]
-            if len(secret_bytes) >= 32
-            else secret_bytes.ljust(56, b"\x00")
-        )
-        timestamp = struct.pack(">I", int(time.time()))
-
-        return cls.PROXY_GET_REQUEST + padding + timestamp
-
-    @classmethod
-    def _build_obfuscated_request(cls, secret: str | None) -> bytes:
-        """Build a 64-byte obfuscated probe for dd-proxies."""
-        raw = b""
-
-        if secret:
-            with contextlib.suppress(ValueError):
-                raw = bytes.fromhex(secret)
-
-        if raw.startswith(b"\xdd") and len(raw) >= 4:
-            payload = raw
-        else:
-            payload = b"\xdd\xdd\xdd\xdd" + raw
-
-        if len(payload) < 64:
-            payload += os.urandom(64 - len(payload))
-
-        return payload[:64]
-
-    @classmethod
-    def _build_tls_client_hello(cls, server_name: str | None) -> bytes:
-        """Build a minimal TLS ClientHello with optional SNI."""
-        extensions = b""
-
-        if server_name and not cls._is_ip(server_name):
-            try:
-                name = server_name.encode("idna")
-            except UnicodeError:
-                name = server_name.encode("ascii", "ignore")
-
-            if name:
-                server_name_entry = struct.pack("!BH", 0, len(name)) + name
-                server_name_list = (
-                    struct.pack("!H", len(server_name_entry)) + server_name_entry
-                )
-                extensions += (
-                    struct.pack("!HH", 0x0000, len(server_name_list)) + server_name_list
-                )
-
-        random_bytes = os.urandom(32)
-
-        cipher_bytes = b"".join(
-            struct.pack("!H", cipher) for cipher in cls.TLS_CIPHER_SUITES
-        )
-        cipher_suites = struct.pack("!H", len(cipher_bytes)) + cipher_bytes
-
-        # ClientHello:
-        # version, random, session_id_len=0, cipher_suites, compression_methods=null
-        client_hello = (
-            b"\x03\x03"
-            + random_bytes
-            + b"\x00"
-            + cipher_suites
-            + b"\x01\x00"
-            + struct.pack("!H", len(extensions))
-            + extensions
-        )
-
-        handshake = b"\x01" + struct.pack("!I", len(client_hello))[1:] + client_hello
-
-        # TLS record: handshake, TLS 1.0 record version for compatibility.
-        return b"\x16\x03\x01" + struct.pack("!H", len(handshake)) + handshake
-
-    @classmethod
     def _normalize_secret(cls, secret: str | None) -> str | None:
-        """Normalize secret: trim, lower, extract from tg/t.me links if present."""
+        """Normalize secret format."""
         if secret is None:
             return None
 
@@ -526,7 +494,7 @@ class PingChecker:
         if not value:
             return None
 
-        # Extract secret from links like tg://proxy?secret=... or t.me/proxy?secret=...
+        # Extract from URL if present
         if "secret=" in value or "://" in value:
             try:
                 parsed = urlparse(value if "://" in value else f"https://{value}")
@@ -537,7 +505,8 @@ class PingChecker:
                 pass
 
         value = value.strip().lower()
-        value = value.removeprefix("0x")
+        if value.startswith("0x"):
+            value = value[2:]
 
         value = "".join(value.split())
         if not value:
@@ -546,7 +515,6 @@ class PingChecker:
         if all(c in "0123456789abcdef" for c in value):
             return value
 
-        # If input is dirty but still contains a plausible hex ee/dd secret, extract it.
         filtered = "".join(c for c in value if c in "0123456789abcdef")
         if filtered.startswith(("dd", "ee")) and len(filtered) >= 34:
             return filtered
@@ -569,24 +537,16 @@ class PingChecker:
 
     @classmethod
     def _extract_tls_domain(cls, secret: str | None) -> str | None:
-        """
-        Extract SNI domain from fake-tls secret.
-
-        Common format:
-            ee + 16 random bytes as hex + domain as hex
-        """
+        """Extract SNI domain from fake-tls secret."""
         secret = cls._normalize_secret(secret)
         if not secret or not secret.lower().startswith("ee"):
             return None
 
         rest = secret[2:]
-        candidates: list[str] = []
+        candidates = []
 
-        # Standard fake-tls secret: ee + 32 hex chars random + domain hex.
         if len(rest) > 32:
             candidates.append(rest[32:])
-
-        # Some simplified implementations may put domain directly after ee.
         candidates.append(rest)
 
         for candidate in candidates:
@@ -611,7 +571,7 @@ class PingChecker:
 
     @classmethod
     def _looks_like_host(cls, value: str) -> bool:
-        """Heuristic validation for domain/IP extracted from secret."""
+        """Validate domain/IP format."""
         if not value or len(value) < 3:
             return False
 
