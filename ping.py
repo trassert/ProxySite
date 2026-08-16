@@ -18,7 +18,7 @@ import os
 import struct
 import time
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from urllib.parse import parse_qs, urlparse
 
 from models import PingStatus
@@ -27,7 +27,7 @@ PING_OK_THRESHOLD = 500
 PING_WARNING_THRESHOLD = 1500
 
 
-class ProxyMode(str, Enum):
+class ProxyMode(StrEnum):
     DEFAULT = "default"
     OBFUSCATED = "obfuscated"
     FAKE_TLS = "fake_tls"
@@ -312,7 +312,7 @@ class PingChecker:
                     reader.read(8),
                     timeout=wait_timeout,
                 )
-            except (TimeoutError, asyncio.TimeoutError):
+            except TimeoutError:
                 # No immediate answer, but connection is still alive.
                 if writer.is_closing():
                     return False, None
@@ -485,8 +485,12 @@ class PingChecker:
 
             if name:
                 server_name_entry = struct.pack("!BH", 0, len(name)) + name
-                server_name_list = struct.pack("!H", len(server_name_entry)) + server_name_entry
-                extensions += struct.pack("!HH", 0x0000, len(server_name_list)) + server_name_list
+                server_name_list = (
+                    struct.pack("!H", len(server_name_entry)) + server_name_entry
+                )
+                extensions += (
+                    struct.pack("!HH", 0x0000, len(server_name_list)) + server_name_list
+                )
 
         random_bytes = os.urandom(32)
 
@@ -533,8 +537,7 @@ class PingChecker:
                 pass
 
         value = value.strip().lower()
-        if value.startswith("0x"):
-            value = value[2:]
+        value = value.removeprefix("0x")
 
         value = "".join(value.split())
         if not value:
