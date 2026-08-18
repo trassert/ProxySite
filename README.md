@@ -144,7 +144,7 @@ debug = false
 
 [logging]
 level = "INFO"
-file = "logs/proxyhub.log"
+file = "logs/system-{time:DD.MM.YY}.log"
 rotation = "10 MB"
 retention = "7 days"
 

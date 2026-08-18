@@ -12,7 +12,7 @@ from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 
-from config import logger
+from config import access_logger, logger
 
 
 class RequestLogger(BaseHTTPMiddleware):
@@ -111,7 +111,9 @@ class RequestLogger(BaseHTTPMiddleware):
             history = self.request_history[key]
 
             # Remove old entries outside the time window
-            while history and (current_time - history[0][0]) > self.GROUP_WINDOW:
+            while (
+                history and (current_time - history[0][0]) > self.GROUP_WINDOW
+            ):
                 history.popleft()
 
             # Count recent similar requests
@@ -121,7 +123,10 @@ class RequestLogger(BaseHTTPMiddleware):
             # Log first request immediately, then every GROUP_COUNT_INTERVAL-th request
             if count == 0:
                 self._log_message(method, normalized, client, status, duration)
-            elif count % self.GROUP_COUNT_INTERVAL == self.GROUP_COUNT_INTERVAL - 1:
+            elif (
+                count % self.GROUP_COUNT_INTERVAL
+                == self.GROUP_COUNT_INTERVAL - 1
+            ):
                 self._log_message(
                     method,
                     normalized,
@@ -160,7 +165,7 @@ class RequestLogger(BaseHTTPMiddleware):
         if note:
             message += note
 
-        logger.info(message)
+        access_logger.info(message)
 
 
 class SilentUvicornLogger:
