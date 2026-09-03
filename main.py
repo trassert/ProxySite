@@ -69,9 +69,7 @@ async def ping_worker() -> None:
         try:
             proxies = await db.get_all_for_ping()
             for proxy_id, server, port, secret, proxy_type in proxies:
-                result = await PingChecker.check(
-                    server, port, secret, proxy_type
-                )
+                result = await PingChecker.check(server, port, secret, proxy_type)
                 await db.update_ping(
                     proxy_id=proxy_id,
                     ping_ms=result.ping_ms,
@@ -180,9 +178,7 @@ async def index(
     sort: str = "likes",
 ) -> Response:
     """Main page with proxy list."""
-    sort_by = (
-        SortBy(sort) if sort in [s.value for s in SortBy] else SortBy.LIKES
-    )
+    sort_by = SortBy(sort) if sort in [s.value for s in SortBy] else SortBy.LIKES
     proxies = await db.get_proxies(sort_by=sort_by, limit=100)
     total = await db.get_total_count()
     stats = await db.get_stats()
@@ -210,9 +206,7 @@ async def list_proxies(
     offset: int = 0,
 ) -> ProxyListResponse:
     """Get list of proxies."""
-    sort_by = (
-        SortBy(sort) if sort in [s.value for s in SortBy] else SortBy.LIKES
-    )
+    sort_by = SortBy(sort) if sort in [s.value for s in SortBy] else SortBy.LIKES
     proxies = await db.get_proxies(sort_by=sort_by, limit=limit, offset=offset)
     total = await db.get_total_count()
 
@@ -297,9 +291,7 @@ async def vote(
     # Return new position when liked for dynamic re-sorting
     new_position = None
     if data.vote_type == "like":
-        proxies = await db.get_proxies(
-            sort_by=SortBy.LIKES, limit=100, offset=0
-        )
+        proxies = await db.get_proxies(sort_by=SortBy.LIKES, limit=100, offset=0)
         new_position = next(
             (i for i, p in enumerate(proxies) if p.id == data.proxy_id), -1
         )
