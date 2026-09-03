@@ -60,9 +60,7 @@ class RateLimiter(BaseHTTPMiddleware):
                 oldest_client = min(
                     self.requests,
                     key=lambda client: (
-                        self.requests[client][-1][0]
-                        if self.requests[client]
-                        else 0
+                        self.requests[client][-1][0] if self.requests[client] else 0
                     ),
                 )
                 del self.requests[oldest_client]
@@ -74,9 +72,7 @@ class RateLimiter(BaseHTTPMiddleware):
         ]
 
         # Check limit for this path
-        path_requests = len(
-            [p for _, p in self.requests[client_ip] if p == path]
-        )
+        path_requests = len([p for _, p in self.requests[client_ip] if p == path])
 
         if path_requests >= limit:
             logger.warning(
@@ -119,9 +115,7 @@ class CacheStore:
         if not pattern:
             self.cache.clear()
         else:
-            self.cache = {
-                k: v for k, v in self.cache.items() if pattern not in k
-            }
+            self.cache = {k: v for k, v in self.cache.items() if pattern not in k}
 
 
 # Global cache instance
