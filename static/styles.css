@@ -385,6 +385,17 @@ html.dark .theme-toggle .icon-moon {
   font: var(--md-sys-typescale-title-large);
   color: var(--md-sys-color-on-surface);
   word-break: break-all;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.web-proxy-icon {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  color: var(--md-sys-color-primary);
+  fill: currentColor;
 }
 
 .proxy-port {
@@ -738,6 +749,31 @@ html.dark .ping-badge.fallback {
   color: var(--md-sys-color-on-surface-variant);
   z-index: 1;
   border-radius: 4px;
+}
+
+.proxy-type-field select {
+  width: 100%;
+  min-height: 56px;
+  padding: 0 16px;
+  border: 1px solid var(--md-sys-color-outline);
+  border-radius: var(--md-sys-shape-corner-medium);
+  background: var(--md-sys-color-surface-container-lowest);
+  color: var(--md-sys-color-on-surface);
+  font: var(--md-sys-typescale-body-large);
+  cursor: pointer;
+}
+
+.proxy-type-field .text-field label {
+  position: static;
+  display: block;
+  padding: 0 0 6px;
+  background: transparent;
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.proxy-type-field select:focus {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 1px;
 }
 
 /* Form Panels for tab switching */

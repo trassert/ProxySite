@@ -121,17 +121,29 @@ async function copyLink(link, element) {
     setTimeout(() => element.classList.remove('copy-success'), 300);
     showSnackbar('Link copied!');
   } catch (error) {
-    // Fallback
+    // Fallback for browsers without the Clipboard API
     const textarea = document.createElement('textarea');
     textarea.value = link;
     textarea.style.position = 'fixed';
-    textarea.style.opacity = '0';
+    textarea.style.left = '-9999px';
     document.body.appendChild(textarea);
+    textarea.focus();
     textarea.select();
-    document.execCommand('copy');
+    const copied = document.execCommand('copy');
     document.body.removeChild(textarea);
-    showSnackbar('Link copied!');
+    if (copied) {
+      element.classList.add('copy-success');
+      setTimeout(() => element.classList.remove('copy-success'), 300);
+      showSnackbar('Link copied!');
+    } else {
+      showSnackbar('Could not copy link');
+    }
   }
+}
+
+function openTelegramLink(link, event) {
+  event.preventDefault();
+  window.location.href = link;
 }
 
 // ============================================
@@ -573,7 +585,7 @@ function createProxyCard(proxy) {
   card.innerHTML = `
     <div class="proxy-header">
       <div>
-        <h2 class="proxy-server">${proxy.server}<span class="proxy-port">:${proxy.port}</span></h2>
+        <h2 class="proxy-server">${isWebProxy ? '<svg class="web-proxy-icon" viewBox="0 0 24 24" aria-label="Internet" role="img"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm6.92 9h-3.04a15.7 15.7 0 0 0-1.18-5.02A8.03 8.03 0 0 1 18.92 11ZM12 4c.83 1.2 1.55 3.67 1.83 7h-3.66C10.45 7.67 11.17 5.2 12 4ZM9.3 5.98A15.7 15.7 0 0 0 8.12 11H5.08a8.03 8.03 0 0 1 4.22-5.02ZM5.08 13h3.04c.2 1.86.62 3.58 1.18 5.02A8.03 8.03 0 0 1 5.08 13ZM12 20c-.83-1.2-1.55-3.67-1.83-7h3.66c-.28 3.33-1 5.8-1.83 7Zm2.7-1.98A15.7 15.7 0 0 0 15.88 13h3.04a8.03 8.03 0 0 1-4.22 5.02Z" /></svg>' : ''}${proxy.server}<span class="proxy-port">:${proxy.port}</span></h2>
       </div>
       <button class="ping-badge ${badgeClass}" onclick="checkPing(${proxy.id})" title="Click to refresh">
         ${pingBadgeContent}
@@ -610,6 +622,8 @@ function createProxyCard(proxy) {
       <div class="link-buttons">
         <a 
           href="${telegramLink}"
+          data-link="${telegramLink}"
+          onclick="openTelegramLink(this.dataset.link, event)"
           class="link-btn"
         >
           <svg class="icon" viewBox="0 0 24 24" width="20" height="20"><path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/></svg>
@@ -617,7 +631,8 @@ function createProxyCard(proxy) {
         </a>
         <button 
           class="link-btn" 
-          onclick="copyLink('${telegramLink}', this)"
+          data-link="${telegramLink}"
+          onclick="copyLink(this.dataset.link, this)"
         >
           <svg class="icon" viewBox="0 0 24 24" width="20" height="20"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
           Copy
