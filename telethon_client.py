@@ -12,7 +12,9 @@ from telethon import TelegramClient, events
 
 from config import config
 from database import db
+from models import PingStatus
 from parser import ProxyLinkParser
+from ping import PingChecker
 
 SESSION_DIR = Path(".session")
 SESSION_DIR.mkdir(parents=True, exist_ok=True)
@@ -63,9 +65,27 @@ class TelegramProxyListener:
                 if proxies:
                     added = 0
                     for proxy in proxies:
+                        check = await PingChecker.check(
+                            proxy.server,
+                            proxy.port,
+                            proxy.secret,
+                            proxy.proxy_type,
+                        )
+                        if check.status == PingStatus.FAILED:
+                            logger.warning(
+                                "Proxy {address} failed checks from {source}",
+                                address=f"{proxy.server}:{proxy.port}",
+                                source=source,
+                            )
+                            continue
                         result = await db.add_proxy(proxy)
                         if result:
                             added += 1
+                            logger.info(
+                                "Proxy {address} added from {source}",
+                                address=f"{proxy.server}:{proxy.port}",
+                                source=source,
+                            )
                     logger.info(
                         "Imported {count}/{total} proxies from {source}",
                         count=added,

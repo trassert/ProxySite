@@ -323,8 +323,23 @@ async function submitAddProxy() {
 
     const result = await response.json();
 
-    if (result.added > 0) {
+    if (result.results?.length > 0) {
+      result.results.forEach((item, index) => {
+        setTimeout(() => {
+          if (item.status === 'added') {
+            showSnackbar(`${item.address} added!`);
+          } else if (item.status === 'failed_checks') {
+            showSnackbar(`${item.address} failed checks.`);
+          } else {
+            showSnackbar(`${item.address} already exists.`);
+          }
+        }, index * 3200);
+      });
+    } else if (result.added > 0) {
       showSnackbar(`Added ${result.added} proxy/proxies!`);
+    }
+
+    if (result.added > 0) {
       // Clear form - use value property not attribute
       const serverInput = document.getElementById('proxy-server');
       const portInput = document.getElementById('proxy-port');
@@ -336,7 +351,7 @@ async function submitAddProxy() {
       if (linksInput) linksInput.value = '';
       // Reload list
       setTimeout(() => location.reload(), 500);
-    } else if (result.duplicates > 0) {
+    } else if (result.duplicates > 0 && !result.results?.length) {
       showSnackbar(`${result.duplicates} proxy/proxies already exist`);
     }
 
