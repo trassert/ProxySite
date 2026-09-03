@@ -1,8 +1,8 @@
 """Telegram listener for configured public channels.
 
 This module starts a Telethon client and listens for new messages in
-configured channels. Any tg://proxy or https://t.me/proxy links found in
-message text are parsed and added to the local proxy database.
+configured channels. Any supported Telegram proxy links found in message text
+are parsed and added to the local proxy database.
 """
 
 from pathlib import Path
@@ -50,6 +50,16 @@ class TelegramProxyListener:
             try:
                 text = event.raw_text or ""
                 proxies, errors = ProxyLinkParser.parse_text(text)
+                try:
+                    chat = await event.get_chat()
+                    username = getattr(chat, "username", None)
+                except Exception:
+                    username = None
+                source = (
+                    f"https://t.me/{username}/{event.id}"
+                    if username
+                    else f"telegram://chat/{event.chat_id}/message/{event.id}"
+                )
                 if proxies:
                     added = 0
                     for proxy in proxies:
@@ -57,14 +67,16 @@ class TelegramProxyListener:
                         if result:
                             added += 1
                     logger.info(
-                        "Telegram message imported {count} proxies from {chat}",
+                        "Imported {count}/{total} proxies from {source}",
                         count=added,
-                        chat=str(event.chat_id),
+                        total=len(proxies),
+                        source=source,
                     )
                 if errors:
                     logger.warning(
-                        "Telegram message parse warnings: {errors}",
-                        errors=errors,
+                        "Telegram message parse warnings: {count} invalid links from {source}",
+                        count=len(errors),
+                        source=source,
                     )
             except Exception as exc:
                 logger.exception(

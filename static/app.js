@@ -3,6 +3,18 @@
  * Handles voting, copy, and dynamic updates
  */
 
+const PING_ICON_PATHS = {
+  ok: 'M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z',
+  warning: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z',
+  fallback: 'M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z',
+  pending: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z'
+};
+
+function pingIcon(status, isFallback = false) {
+  const path = PING_ICON_PATHS[isFallback ? 'fallback' : status] || PING_ICON_PATHS.pending;
+  return `<svg class="icon" viewBox="0 0 24 24" width="16" height="16"><path d="${path}"/></svg>`;
+}
+
 // ============================================
 // Theme Toggle
 // ============================================
@@ -372,38 +384,12 @@ async function checkPing(proxyId) {
     }
     badge.className = `ping-badge ${badgeClass}`;
 
-    let statusIcon = '';
-    let statusText = '';
-
-    switch (data.status) {
-      case 'ok':
-        if (data.is_fallback) {
-          // Fallback proxy - show exclamation and TCP ping time
-          statusIcon = '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>';
-          statusText = `${data.ping_ms || ''}ms`;
-        } else {
-          statusIcon = '<path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>';
-          statusText = `${data.ping_ms || ''}ms`;
-        }
-        break;
-      case 'warning':
-        if (data.is_fallback) {
-          // TCP fallback succeeded but proxy-get failed — show exclamation + ping
-          statusIcon = '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>';
-          statusText = `${data.ping_ms || ''}ms`;
-        } else {
-          statusIcon = '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>';
-          statusText = `${data.ping_ms || ''}ms`;
-        }
-        break;
-      case 'failed':
-        statusIcon = '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>';
-        statusText = 'Down';
-        break;
-    }
+    const statusText = data.status === 'failed'
+      ? 'Down'
+      : `${data.ping_ms || ''}ms`;
 
     badge.innerHTML = `
-      <svg class="icon" viewBox="0 0 24 24" width="16" height="16">${statusIcon}</svg>
+      ${pingIcon(data.status, data.is_fallback)}
       ${statusText}
     `;
 
@@ -421,7 +407,7 @@ async function checkPing(proxyId) {
     badge.className = 'ping-badge failed';
     badge.innerHTML = `
       <svg class="icon" viewBox="0 0 24 24" width="16" height="16">
-        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+        ${pingIcon('failed')}
       </svg>
       Error
     `;
@@ -530,54 +516,13 @@ function createProxyCard(proxy) {
     badgeClass = 'fallback';
   }
 
-  let pingBadgeContent = '';
-  switch (proxy.ping_status) {
-    case 'ok':
-      if (proxy.is_fallback) {
-        // TCP fallback succeeded - show TCP ping time
-        const tcpPing = proxy.ping_ms ?? 0;
-        pingBadgeContent = `
-          <svg class="icon" viewBox="0 0 24 24" width="16" height="16"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
-          ${tcpPing}ms
-        `;
-      } else {
-        const pingVal = proxy.ping_ms ?? 0;
-        pingBadgeContent = `
-          <svg class="icon" viewBox="0 0 24 24" width="16" height="16"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
-          ${pingVal}ms
-        `;
-      }
-      break;
-    case 'warning':
-      if (proxy.is_fallback) {
-        // TCP fallback succeeded but proxy-get failed
-        const tcpPing = proxy.ping_ms ?? 0;
-        pingBadgeContent = `
-          <svg class="icon" viewBox="0 0 24 24" width="16" height="16"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
-          ${tcpPing}ms
-        `;
-      } else {
-        const pingVal = proxy.ping_ms ?? 0;
-        pingBadgeContent = `
-          <svg class="icon" viewBox="0 0 24 24" width="16" height="16"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
-          ${pingVal}ms
-        `;
-      }
-      break;
-    case 'failed':
-      pingBadgeContent = `
-        <svg class="icon" viewBox="0 0 24 24" width="16" height="16"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
-        Down
-      `;
-      break;
-    default:
-      pingBadgeContent = `
-        <svg class="icon" viewBox="0 0 24 24" width="16" height="16"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>
-        Pending
-      `;
-  }
-
   const isWebProxy = proxy.proxy_type === 'web';
+  const pingText = proxy.ping_status === 'failed'
+    ? 'Down'
+    : proxy.ping_status === 'pending'
+      ? 'Pending'
+      : `${proxy.ping_ms ?? 0}ms`;
+  const pingBadgeContent = `${pingIcon(proxy.ping_status, proxy.is_fallback)} ${pingText}`;
   const telegramLink = isWebProxy
     ? `tg://webproxy?server=${proxy.server}&secret=${proxy.secret}`
     : `tg://proxy?server=${proxy.server}&port=${proxy.port}&secret=${proxy.secret}`;

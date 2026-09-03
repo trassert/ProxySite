@@ -111,7 +111,9 @@ class RequestLogger(BaseHTTPMiddleware):
             history = self.request_history[key]
 
             # Remove old entries outside the time window
-            while history and (current_time - history[0][0]) > self.GROUP_WINDOW:
+            while (
+                history and (current_time - history[0][0]) > self.GROUP_WINDOW
+            ):
                 history.popleft()
 
             # Count recent similar requests
@@ -121,7 +123,10 @@ class RequestLogger(BaseHTTPMiddleware):
             # Log first request immediately, then every GROUP_COUNT_INTERVAL-th request
             if count == 0:
                 self._log_message(method, normalized, client, status, duration)
-            elif count % self.GROUP_COUNT_INTERVAL == self.GROUP_COUNT_INTERVAL - 1:
+            elif (
+                count % self.GROUP_COUNT_INTERVAL
+                == self.GROUP_COUNT_INTERVAL - 1
+            ):
                 self._log_message(
                     method,
                     normalized,
@@ -148,15 +153,10 @@ class RequestLogger(BaseHTTPMiddleware):
         if len(path) > 40:
             path = path[:37] + "..."
 
-        # Status emoji
-        status_emoji = (
-            "✓" if 200 <= status < 300 else "⚠" if 300 <= status < 400 else "✗"
-        )
-
         # Format duration in ms
         duration_ms = duration * 1000
 
-        message = f"{status_emoji} {method:4} {path:40} {status:3} {duration_ms:5.0f}ms {client}"
+        message = f"{method} {path} {status} {duration_ms:.0f}ms {client}"
         if note:
             message += note
 

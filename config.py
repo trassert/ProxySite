@@ -1,13 +1,14 @@
 import sys
 import tomllib
+from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
 
 from loguru import logger
 
 CONFIG_PATH = Path("config.toml")
-SYSTEM_LOG_TEMPLATE = "logs/system-{time:DD.MM.YY}.log"
-ACCESS_LOG_TEMPLATE = "logs/access-{time:DD.MM.YY}.log"
+SYSTEM_LOG_TEMPLATE = "logs/{time:YYYY-MM-DD}-system.log"
+ACCESS_LOG_TEMPLATE = "logs/{time:YYYY-MM-DD}-access.log"
 
 DEFAULT_CONFIG = {
     "app": {
@@ -61,7 +62,7 @@ class Config:
 
 
 def load_config(path: Path = CONFIG_PATH) -> Config:
-    config_data = DEFAULT_CONFIG.copy()
+    config_data = deepcopy(DEFAULT_CONFIG)
     if path.exists():
         try:
             with path.open("rb") as fp:
@@ -74,14 +75,19 @@ def load_config(path: Path = CONFIG_PATH) -> Config:
         except Exception as exc:
             logger.warning("Failed to read config.toml: {exc}", exc=exc)
     else:
-        logger.warning("Config file {path} not found, using defaults", path=path)
+        logger.warning(
+            "Config file {path} not found, using defaults", path=path
+        )
 
     telegram = TelegramConfig(
         enabled=bool(config_data["telegram"].get("enabled", False)),
         api_id=int(config_data["telegram"].get("api_id", 0)),
         api_hash=str(config_data["telegram"].get("api_hash", "")),
-        session_name=str(config_data["telegram"].get("session_name", "proxyhub")),
-        channels=list(config_data["telegram"].get("channels", ["telemtrs"])) or [],
+        session_name=str(
+            config_data["telegram"].get("session_name", "proxyhub")
+        ),
+        channels=list(config_data["telegram"].get("channels", ["telemtrs"]))
+        or [],
     )
     logging = LoggingConfig(
         level=str(config_data["logging"].get("level", "INFO")),
@@ -104,7 +110,8 @@ logger.remove()
 logger.add(
     sys.stderr,
     level=config.logging.level,
-    format="<green>{time:MM-DD HH:mm:ss}</green> | <level>{level}</level> | <cyan>{function}</cyan> - <level>{message}</level>",
+    format="<dim>{time:YYYY-MM-DD HH:mm:ss}</dim> | <level>{level: <8}</level> | {message}",
+    colorize=True,
     filter=lambda record: record["extra"].get("log_type") != "http",
 )
 
@@ -129,7 +136,7 @@ logger.add(
     rotation="1 day",
     retention="30 days",
     enqueue=True,
-    format="{time:DD.MM.YY HH:mm:ss} | {message}",
+    format="{time:YYYY-MM-DD HH:mm:ss} | {message}",
     filter=lambda record: record["extra"].get("log_type") == "http",
 )
 

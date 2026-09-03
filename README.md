@@ -13,6 +13,7 @@ Community-driven Telegram proxy aggregator with real-time ping monitoring, votin
 - **QR Code Support**: Generate QR codes for quick Telegram proxy connection
 - **Bulk Import**: Parse and add multiple proxies from text
 - **Responsive Design**: Material Design 3 UI with dark/light theme support
+- **Useful logging**: System logs use `logs/YYYY-MM-DD-system.log`; HTTP access logs use `logs/YYYY-MM-DD-access.log`. Secrets and full proxy links are excluded from log messages.
 
 ## How It Works
 
@@ -144,7 +145,7 @@ debug = false
 
 [logging]
 level = "INFO"
-file = "logs/system-{time:DD.MM.YY}.log"
+file = "logs/{time:YYYY-MM-DD}-system.log"
 rotation = "10 MB"
 retention = "7 days"
 

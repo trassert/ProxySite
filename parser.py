@@ -1,7 +1,4 @@
-"""
-Link parser for MTProto proxy URLs.
-Supports tg://proxy and t.me/proxy formats.
-"""
+"""Link parser for MTProto and WEB proxy URLs."""
 
 import re
 from urllib.parse import parse_qs, urlparse
@@ -96,7 +93,7 @@ class ProxyLinkParser:
                     seen.add(key)
                     proxies.append(proxy)
             else:
-                errors.append(f"Invalid link: {link[:50]}...")
+                errors.append("Invalid proxy link")
 
         return proxies, errors
 

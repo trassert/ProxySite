@@ -30,6 +30,7 @@ class RateLimiter(BaseHTTPMiddleware):
         "/api/add-proxy": 10,  # Very restrictive
         "/": 120,  # Homepage
     }
+    MAX_CLIENTS = 10_000
 
     def __init__(self, app):
         super().__init__(app)
@@ -55,6 +56,16 @@ class RateLimiter(BaseHTTPMiddleware):
 
         # Initialize or clean up
         if client_ip not in self.requests:
+            if len(self.requests) >= self.MAX_CLIENTS:
+                oldest_client = min(
+                    self.requests,
+                    key=lambda client: (
+                        self.requests[client][-1][0]
+                        if self.requests[client]
+                        else 0
+                    ),
+                )
+                del self.requests[oldest_client]
             self.requests[client_ip] = []
 
         # Remove old requests
@@ -63,11 +74,13 @@ class RateLimiter(BaseHTTPMiddleware):
         ]
 
         # Check limit for this path
-        path_requests = len([p for _, p in self.requests[client_ip] if p == path])
+        path_requests = len(
+            [p for _, p in self.requests[client_ip] if p == path]
+        )
 
         if path_requests >= limit:
             logger.warning(
-                "⚠️  Rate limit exceeded for {client} on {path}",
+                "Rate limit exceeded for {client} on {path}",
                 client=client_ip,
                 path=path,
             )
@@ -106,7 +119,9 @@ class CacheStore:
         if not pattern:
             self.cache.clear()
         else:
-            self.cache = {k: v for k, v in self.cache.items() if pattern not in k}
+            self.cache = {
+                k: v for k, v in self.cache.items() if pattern not in k
+            }
 
 
 # Global cache instance
