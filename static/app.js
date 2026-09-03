@@ -36,16 +36,18 @@ function toggleTheme() {
 // Snackbar
 // ============================================
 
-function showSnackbar(message, duration = 3000) {
-  // Remove existing snackbar
-  const existing = document.querySelector('.snackbar');
-  if (existing) {
-    existing.remove();
-  }
+const snackbarQueue = [];
+let snackbarActive = false;
 
+function showSnackbar(message, duration = 3000) {
+  snackbarQueue.push({ message, duration });
+  if (snackbarActive) return;
+
+  snackbarActive = true;
+  const item = snackbarQueue.shift();
   const snackbar = document.createElement('div');
   snackbar.className = 'snackbar';
-  snackbar.textContent = message;
+  snackbar.textContent = item.message;
   document.body.appendChild(snackbar);
 
   // Trigger animation
@@ -55,8 +57,15 @@ function showSnackbar(message, duration = 3000) {
 
   setTimeout(() => {
     snackbar.classList.remove('show');
-    setTimeout(() => snackbar.remove(), 300);
-  }, duration);
+    setTimeout(() => {
+      snackbar.remove();
+      snackbarActive = false;
+      if (snackbarQueue.length) {
+        const next = snackbarQueue.shift();
+        showSnackbar(next.message, next.duration);
+      }
+    }, 300);
+  }, item.duration);
 }
 
 // ============================================
@@ -320,6 +329,43 @@ async function submitAddProxy() {
       },
       body: JSON.stringify(data),
     });
+
+    if (tabId === 'links-tab') {
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let added = 0;
+
+      const processEvent = (event) => {
+        const line = event.split('\n').find((value) => value.startsWith('data: '));
+        if (!line) return;
+        const item = JSON.parse(line.slice(6));
+        if (item.type === 'result') {
+          if (item.status === 'added') {
+            added += 1;
+            showSnackbar(`${item.address} added!`);
+          } else if (item.status === 'failed_checks') {
+            showSnackbar(`${item.address} failed checks.`);
+          } else {
+            showSnackbar(`${item.address} already exists.`);
+          }
+        } else if (item.type === 'error') {
+          showSnackbar(item.message);
+        }
+      };
+
+      while (true) {
+        const { value, done } = await reader.read();
+        buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+        const events = buffer.split('\n\n');
+        buffer = events.pop();
+        events.forEach(processEvent);
+        if (done) break;
+      }
+      if (buffer.trim()) processEvent(buffer);
+      if (added > 0) setTimeout(() => location.reload(), 500);
+      return;
+    }
 
     const result = await response.json();
 

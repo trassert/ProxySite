@@ -4,13 +4,14 @@ Main entry point with all routes.
 """
 
 import asyncio
+import json
 import uuid
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Form, HTTPException, Request, Response
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -70,7 +71,9 @@ async def ping_worker() -> None:
             proxies = await db.get_all_for_ping()
             checked = 0
             for proxy_id, server, port, secret, proxy_type in proxies:
-                result = await PingChecker.check(server, port, secret, proxy_type)
+                result = await PingChecker.check(
+                    server, port, secret, proxy_type
+                )
                 await db.update_ping(
                     proxy_id=proxy_id,
                     ping_ms=result.ping_ms,
@@ -82,7 +85,9 @@ async def ping_worker() -> None:
                 )
                 checked += 1
                 await asyncio.sleep(0.5)
-            logger.info("Ping cycle completed: {count} proxies checked", count=checked)
+            logger.info(
+                "Ping cycle completed: {count} proxies checked", count=checked
+            )
         except Exception as exc:
             logger.exception("Ping worker failed: {error}", error=exc)
 
@@ -181,7 +186,9 @@ async def index(
     sort: str = "likes",
 ) -> Response:
     """Main page with proxy list."""
-    sort_by = SortBy(sort) if sort in [s.value for s in SortBy] else SortBy.LIKES
+    sort_by = (
+        SortBy(sort) if sort in [s.value for s in SortBy] else SortBy.LIKES
+    )
     proxies = await db.get_proxies(sort_by=sort_by, limit=100)
     total = await db.get_total_count()
     stats = await db.get_stats()
@@ -209,7 +216,9 @@ async def list_proxies(
     offset: int = 0,
 ) -> ProxyListResponse:
     """Get list of proxies."""
-    sort_by = SortBy(sort) if sort in [s.value for s in SortBy] else SortBy.LIKES
+    sort_by = (
+        SortBy(sort) if sort in [s.value for s in SortBy] else SortBy.LIKES
+    )
     proxies = await db.get_proxies(sort_by=sort_by, limit=limit, offset=offset)
     total = await db.get_total_count()
 
@@ -310,7 +319,9 @@ async def vote(
     # Return new position when liked for dynamic re-sorting
     new_position = None
     if data.vote_type == "like":
-        proxies = await db.get_proxies(sort_by=SortBy.LIKES, limit=100, offset=0)
+        proxies = await db.get_proxies(
+            sort_by=SortBy.LIKES, limit=100, offset=0
+        )
         new_position = next(
             (i for i, p in enumerate(proxies) if p.id == data.proxy_id), -1
         )
@@ -393,42 +404,14 @@ async def add_proxy_api(data: dict) -> dict:
 
     try:
         if "links" in data and data["links"].strip():
-            proxies, errors = ProxyLinkParser.parse_text(data["links"])
-            added = 0
-            duplicates = 0
-            results = []
-            for proxy in proxies:
-                result, error = await _validate_and_create_proxy(proxy)
-                if result:
-                    added += 1
-                    results.append(
-                        {
-                            "address": f"{proxy.server}:{proxy.port}",
-                            "status": "added",
-                        }
-                    )
-                elif error == "Proxy already exists":
-                    duplicates += 1
-                    results.append(
-                        {
-                            "address": f"{proxy.server}:{proxy.port}",
-                            "status": "duplicate",
-                        }
-                    )
-                elif error:
-                    results.append(
-                        {
-                            "address": f"{proxy.server}:{proxy.port}",
-                            "status": "failed_checks",
-                        }
-                    )
-
-            return {
-                "added": added,
-                "duplicates": duplicates,
-                "errors": errors,
-                "results": results,
-            }
+            return StreamingResponse(
+                stream_proxy_import(data["links"]),
+                media_type="text/event-stream",
+                headers={
+                    "Cache-Control": "no-cache",
+                    "X-Accel-Buffering": "no",
+                },
+            )
         if data.get("server") and data.get("port") and data.get("secret"):
             try:
                 proxy = ProxyCreate(
@@ -476,6 +459,32 @@ async def add_proxy_api(data: dict) -> dict:
             "duplicates": 0,
             "errors": ["Internal error"],
         }
+
+
+async def stream_proxy_import(text: str):
+    """Stream one import result immediately after each proxy check."""
+    proxies, errors = ProxyLinkParser.parse_text(text)
+    added = 0
+    duplicates = 0
+
+    for error in errors:
+        yield f"data: {json.dumps({'type': 'error', 'message': error})}\n\n"
+
+    for proxy in proxies:
+        address = f"{proxy.server}:{proxy.port}"
+        result, error = await _validate_and_create_proxy(proxy)
+        if result:
+            added += 1
+            status = "added"
+        elif error == "Proxy already exists":
+            duplicates += 1
+            status = "duplicate"
+        else:
+            status = "failed_checks"
+
+        yield f"data: {json.dumps({'type': 'result', 'address': address, 'status': status})}\n\n"
+
+    yield f"data: {json.dumps({'type': 'done', 'added': added, 'duplicates': duplicates})}\n\n"
 
 
 @app.post("/api/ping/{proxy_id}")
