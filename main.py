@@ -68,8 +68,10 @@ async def ping_worker() -> None:
     while True:
         try:
             proxies = await db.get_all_for_ping()
-            for proxy_id, server, port, secret in proxies:
-                result = await PingChecker.check(server, port, secret)
+            for proxy_id, server, port, secret, proxy_type in proxies:
+                result = await PingChecker.check(
+                    server, port, secret, proxy_type
+                )
                 await db.update_ping(
                     proxy_id=proxy_id,
                     ping_ms=result.ping_ms,
@@ -150,7 +152,9 @@ async def _validate_and_create_proxy(
     proxy: ProxyCreate,
 ) -> tuple[ProxyResponse | None, str | None]:
     """Validate proxy ping and add it to the database if reachable."""
-    result = await PingChecker.check(proxy.server, proxy.port, proxy.secret)
+    result = await PingChecker.check(
+        proxy.server, proxy.port, proxy.secret, proxy.proxy_type
+    )
     if result.status == PingStatus.FAILED:
         return None, "Proxy failed ping check"
 
@@ -176,7 +180,9 @@ async def index(
     sort: str = "likes",
 ) -> Response:
     """Main page with proxy list."""
-    sort_by = SortBy(sort) if sort in [s.value for s in SortBy] else SortBy.LIKES
+    sort_by = (
+        SortBy(sort) if sort in [s.value for s in SortBy] else SortBy.LIKES
+    )
     proxies = await db.get_proxies(sort_by=sort_by, limit=100)
     total = await db.get_total_count()
     stats = await db.get_stats()
@@ -204,7 +210,9 @@ async def list_proxies(
     offset: int = 0,
 ) -> ProxyListResponse:
     """Get list of proxies."""
-    sort_by = SortBy(sort) if sort in [s.value for s in SortBy] else SortBy.LIKES
+    sort_by = (
+        SortBy(sort) if sort in [s.value for s in SortBy] else SortBy.LIKES
+    )
     proxies = await db.get_proxies(sort_by=sort_by, limit=limit, offset=offset)
     total = await db.get_total_count()
 
@@ -289,7 +297,9 @@ async def vote(
     # Return new position when liked for dynamic re-sorting
     new_position = None
     if data.vote_type == "like":
-        proxies = await db.get_proxies(sort_by=SortBy.LIKES, limit=100, offset=0)
+        proxies = await db.get_proxies(
+            sort_by=SortBy.LIKES, limit=100, offset=0
+        )
         new_position = next(
             (i for i, p in enumerate(proxies) if p.id == data.proxy_id), -1
         )
@@ -343,10 +353,12 @@ async def get_stats() -> StatsResponse:
     return StatsResponse(**stats)
 
 
-async def ping_proxy_async(proxy_id: int, server: str, port: int, secret: str) -> None:
+async def ping_proxy_async(
+    proxy_id: int, server: str, port: int, secret: str, proxy_type: str
+) -> None:
     """Background task to ping a newly added proxy."""
     try:
-        result = await PingChecker.check(server, port, secret)
+        result = await PingChecker.check(server, port, secret, proxy_type)
         await db.update_ping(
             proxy_id=proxy_id,
             ping_ms=result.ping_ms,
@@ -393,6 +405,7 @@ async def add_proxy_api(data: dict) -> dict:
                     server=data["server"],
                     port=int(data["port"]),
                     secret=data["secret"],
+                    proxy_type=data.get("proxy_type", "mtproto"),
                 )
                 result, error = await _validate_and_create_proxy(proxy)
                 if error and error != "Proxy already exists":
@@ -441,7 +454,9 @@ async def trigger_ping(proxy_id: int) -> dict:
     if not proxy:
         raise HTTPException(status_code=404, detail="Proxy not found")
 
-    result = await PingChecker.check(proxy.server, proxy.port, proxy.secret)
+    result = await PingChecker.check(
+        proxy.server, proxy.port, proxy.secret, proxy.proxy_type
+    )
     await db.update_ping(
         proxy_id=proxy_id,
         ping_ms=result.ping_ms,

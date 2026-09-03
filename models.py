@@ -8,7 +8,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class PingStatus(StrEnum):
@@ -18,6 +18,11 @@ class PingStatus(StrEnum):
     WARNING = "warning"
     FAILED = "failed"
     PENDING = "pending"
+
+
+class ProxyType(StrEnum):
+    MT_PROTO = "mtproto"
+    WEB = "web"
 
 
 class SortBy(StrEnum):
@@ -34,6 +39,7 @@ class ProxyBase(BaseModel):
     server: str = Field(..., min_length=1, max_length=255)
     port: int = Field(..., ge=1, le=65535)
     secret: str = Field(..., min_length=32, max_length=512)
+    proxy_type: ProxyType = ProxyType.MT_PROTO
 
     @field_validator("server")
     @classmethod
@@ -55,9 +61,22 @@ class ProxyBase(BaseModel):
         v = v.strip().lower()
 
         if not re.match(r"^[a-f0-9]{32,512}$", v) or len(v) % 2 != 0:
-            msg = "Secret must be an even number of hex characters (32+ digits)."
+            msg = (
+                "Secret must be an even number of hex characters (32+ digits)."
+            )
             raise ValueError(msg)
         return v
+
+    @model_validator(mode="after")
+    def validate_web_proxy(self) -> "ProxyBase":
+        if self.proxy_type == ProxyType.WEB:
+            if self.port != 443:
+                msg = "Web proxy port must be 443"
+                raise ValueError(msg)
+            if self.secret.startswith("ee"):
+                msg = "Web proxy does not support ee secrets"
+                raise ValueError(msg)
+        return self
 
 
 class ProxyCreate(ProxyBase):
@@ -95,11 +114,15 @@ class ProxyResponse(ProxyInDB):
     @property
     def tg_link(self) -> str:
         """Generate Telegram proxy link."""
+        if self.proxy_type == ProxyType.WEB:
+            return f"tg://webproxy?server={self.server}&secret={self.secret}"
         return f"tg://proxy?server={self.server}&port={self.port}&secret={self.secret}"
 
     @property
     def https_link(self) -> str:
         """Generate HTTPS proxy link."""
+        if self.proxy_type == ProxyType.WEB:
+            return f"https://t.me/webproxy?server={self.server}&secret={self.secret}"
         return f"https://t.me/proxy?server={self.server}&port={self.port}&secret={self.secret}"
 
     model_config = {"from_attributes": True}

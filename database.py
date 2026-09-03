@@ -12,7 +12,7 @@ from pathlib import Path
 
 import aiosqlite
 
-from models import PingStatus, ProxyBase, ProxyInDB, SortBy
+from models import PingStatus, ProxyBase, ProxyInDB, ProxyType, SortBy
 
 DATABASE_PATH = Path("data/proxies.db")
 
@@ -62,6 +62,7 @@ class Database:
                 server TEXT NOT NULL,
                 port INTEGER NOT NULL,
                 secret TEXT NOT NULL,
+                proxy_type TEXT DEFAULT 'mtproto',
                 likes INTEGER DEFAULT 0,
                 dislikes INTEGER DEFAULT 0,
                 ping_ms INTEGER,
@@ -107,6 +108,11 @@ class Database:
         cursor = await self._connection.execute("PRAGMA table_info(proxies)")
         rows = await cursor.fetchall()
         cols = {row[1] for row in rows}
+        if "proxy_type" not in cols:
+            await self._connection.execute(
+                "ALTER TABLE proxies ADD COLUMN proxy_type TEXT DEFAULT 'mtproto'"
+            )
+            await self._connection.commit()
         if "tcp_ping_ms" not in cols:
             try:
                 await self._connection.execute(
@@ -160,6 +166,7 @@ class Database:
             server=row["server"],
             port=row["port"],
             secret=row["secret"],
+            proxy_type=ProxyType(row["proxy_type"] or ProxyType.MT_PROTO),
             likes=row["likes"],
             dislikes=row["dislikes"],
             ping_ms=row["ping_ms"],
@@ -240,10 +247,10 @@ class Database:
         try:
             cursor = await self._connection.execute(
                 """
-                INSERT INTO proxies (server, port, secret, created_at)
-                VALUES (?, ?, ?, ?)
+                INSERT INTO proxies (server, port, secret, proxy_type, created_at)
+                VALUES (?, ?, ?, ?, ?)
                 """,
-                (proxy.server, proxy.port, proxy.secret, now),
+                (proxy.server, proxy.port, proxy.secret, proxy.proxy_type, now),
             )
             await self._connection.commit()
             proxy_id = cursor.lastrowid
@@ -457,7 +464,9 @@ class Database:
         if deleted_count > 0:
             await self._connection.commit()
             now = datetime.utcnow().isoformat()
-            await self._connection.execute("UPDATE stats SET last_cleanup = ?", (now,))
+            await self._connection.execute(
+                "UPDATE stats SET last_cleanup = ?", (now,)
+            )
             await self._connection.commit()
         return deleted_count
 
@@ -484,7 +493,9 @@ class Database:
             "total_proxies": row["total"] or 0,
             "total_likes": row["total_likes"] or 0,
             "total_dislikes": row["total_dislikes"] or 0,
-            "avg_ping_ms": round(row["avg_ping"], 1) if row["avg_ping"] else None,
+            "avg_ping_ms": round(row["avg_ping"], 1)
+            if row["avg_ping"]
+            else None,
             "online_count": row["online"] or 0,
             "last_cleanup": datetime.fromisoformat(stats_row["last_cleanup"])
             if stats_row and stats_row["last_cleanup"]
@@ -493,7 +504,7 @@ class Database:
 
     async def get_all_for_ping(
         self, skip_failed_hours: int = 2
-    ) -> list[tuple[int, str, int, str]]:
+    ) -> list[tuple[int, str, int, str, ProxyType]]:
         """
         Get proxies for ping checking. Returns (id, server, port, secret).
         Skips proxies that failed recently (within skip_failed_hours) to avoid spamming dead proxies.
@@ -507,7 +518,7 @@ class Database:
         cutoff = (cutoff - timedelta(hours=skip_failed_hours)).isoformat()
         cursor = await self._connection.execute(
             """
-            SELECT id, server, port, secret FROM proxies
+            SELECT id, server, port, secret, proxy_type FROM proxies
             WHERE ping_status != 'failed'
                OR last_checked IS NULL
                OR last_checked < ?
@@ -515,7 +526,16 @@ class Database:
             (cutoff,),
         )
         rows = await cursor.fetchall()
-        return [(row["id"], row["server"], row["port"], row["secret"]) for row in rows]
+        return [
+            (
+                row["id"],
+                row["server"],
+                row["port"],
+                row["secret"],
+                ProxyType(row["proxy_type"] or ProxyType.MT_PROTO),
+            )
+            for row in rows
+        ]
 
 
 db = Database()

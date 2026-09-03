@@ -8,7 +8,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#006A6A">
     <meta name="description"
-      content="Community-driven MTProto proxy aggregator with voting system">
+      content="Community-driven Telegram proxy aggregator with voting system">
     <title>MTProto Proxy Hub</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -182,7 +182,7 @@
 
             <div class="link-buttons">
               <a
-                href="tg://proxy?server={{ proxy.server }}&port={{ proxy.port }}&secret={{ proxy.secret }}"
+                href="{{ proxy.tg_link }}"
                 class="link-btn">
                 <svg class="icon" viewBox="0 0 24 24"><path
                     d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z" /></svg>
@@ -190,14 +190,14 @@
               </a>
               <button
                 class="link-btn"
-                onclick="copyLink('tg://proxy?server={{ proxy.server }}&port={{ proxy.port }}&secret={{ proxy.secret }}', this)">
+                onclick="copyLink('{{ proxy.tg_link }}', this)">
                 <svg class="icon" viewBox="0 0 24 24"><path
                     d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" /></svg>
                 Copy
               </button>
               <button
                 class="link-btn"
-                onclick="showQRCode('{{ proxy.server }}', '{{ proxy.port }}', '{{ proxy.secret }}')">
+                onclick="showQRCode('{{ proxy.server }}', '{{ proxy.port }}', '{{ proxy.secret }}', '{{ proxy.proxy_type.value }}')">
                 <svg class="icon" viewBox="0 0 24 24"><path d="M3 11h8V3H3v8zm2-6h4v4H5V5zm8-2v8h8V3h-8zm6 6h-4V5h4v4zM3 21h8v-8H3v8zm2-6h4v4H5v-4zm8-2v8h8v-8h-8zm6 6h-4v-4h4v4z"/></svg>
                 QR
               </button>
@@ -256,6 +256,15 @@
         <!-- Manual Panel -->
         <div id="manual-tab" class="form-panel hidden">
           <div class="form-row">
+            <div class="form-field full">
+              <div class="text-field">
+                <label>Proxy Type</label>
+                <select id="proxy-type" onchange="toggleProxyType()">
+                  <option value="mtproto">MTProto</option>
+                  <option value="web">Web proxy</option>
+                </select>
+              </div>
+            </div>
             <div class="form-field">
               <div class="text-field">
                 <label>Server</label>

@@ -1,11 +1,11 @@
 # MTProto Proxy Hub
 
-Community-driven MTProto proxy aggregator with real-time ping monitoring, voting system, and automatic cleanup.
+Community-driven Telegram proxy aggregator with real-time ping monitoring, voting system, and automatic cleanup.
 
 ## Features
 
-- **Proxy Aggregation**: Add and manage MTProto proxies from multiple sources
-- **Real-time Ping Monitoring**: Uses MTProto Proxy-get protocol for accurate availability checks
+- **Proxy Aggregation**: Add and manage MTProto and WEB proxies from multiple sources
+- **Real-time Ping Monitoring**: Uses protocol-specific GET checks with TCP fallback
 - **Voting System**: Like/dislike proxies to help community find the best ones
 - **Automatic Cleanup**: 
   - Removes most disliked proxies (5+ dislikes) every 30 minutes
@@ -18,12 +18,9 @@ Community-driven MTProto proxy aggregator with real-time ping monitoring, voting
 
 ### Ping Checking
 
-The system uses **MTProto Proxy-get** protocol (not simple TCP connect) to accurately check proxy availability:
+MTProto entries use the **MTProto Proxy-get** protocol (not simple TCP connect) to accurately check proxy availability. WEB entries use the HTTPS bridge GET endpoint and fall back to a TCP connect check when the bridge request fails.
 
-1. Sends a valid MTProto handshake request with magic bytes `0x00010001`
-2. Includes secret as padding (or handles domain fronting with `ee` prefix)
-3. Waits for proper MTProto response
-4. Measures round-trip time for ping value
+For MTProto, the checker sends a valid obfuscated handshake and measures the response. For WEB, it sends an HTTPS GET to the bridge URL derived from the hostname and secret.
 
 This ensures proxies actually work with Telegram, not just accept TCP connections.
 
@@ -31,7 +28,7 @@ This ensures proxies actually work with Telegram, not just accept TCP connection
 
 #### Ping Worker
 - Runs every 5 minutes
-- Checks all proxies using MTProto Proxy-get
+- Checks all proxies using their protocol-specific GET check
 - Updates ping status (OK/WARNING/FAILED)
 - Skips recently failed proxies (2 hour cooldown) to reduce load
 
@@ -131,7 +128,10 @@ Add proxy via API (supports both single and bulk)
 Supported formats for parsing:
 - `tg://proxy?server=...&port=...&secret=...`
 - `https://t.me/proxy?server=...&port=...&secret=...`
+- `tg://webproxy?server=...&secret=...`
+- `https://t.me/webproxy?server=...&secret=...`
 
+WEB proxies use port `443` implicitly. Their bridge capability is derived from the hostname and decoded MTProxy secret; `ee` TLS-emulation secrets are not supported by the WEB transport.
 ## Configuration
 
 Configuration is loaded from `config.toml`.

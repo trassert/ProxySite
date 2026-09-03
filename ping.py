@@ -12,16 +12,20 @@ Uses valid MTProto handshake packets to bypass replay protection and DPI.
 from __future__ import annotations
 
 import asyncio
+import base64
 import contextlib
+import hashlib
+import hmac
 import ipaddress
 import os
 import random
+import ssl
 import struct
 from dataclasses import dataclass
 from enum import StrEnum
 from urllib.parse import parse_qs, urlparse
 
-from models import PingStatus
+from models import PingStatus, ProxyType
 
 PING_OK_THRESHOLD = 500
 PING_WARNING_THRESHOLD = 1500
@@ -101,7 +105,11 @@ class PingChecker:
 
     @classmethod
     async def check(
-        cls, server: str, port: int, secret: str | None = None
+        cls,
+        server: str,
+        port: int,
+        secret: str | None = None,
+        proxy_type: ProxyType = ProxyType.MT_PROTO,
     ) -> PingResult:
         """Check proxy availability using protocol-specific handshake."""
         secret = cls._normalize_secret(secret)
@@ -110,14 +118,21 @@ class PingChecker:
         loop = asyncio.get_running_loop()
         protocol_deadline = loop.time() + cls.TIMEOUT
 
-        proxy_get_ok, ping_ms = await cls._proxy_get_check(
-            server, port, secret, mode, protocol_deadline
-        )
+        if proxy_type == ProxyType.WEB:
+            proxy_get_ok, ping_ms = await cls._webproxy_get_check(
+                server, secret, protocol_deadline
+            )
+        else:
+            proxy_get_ok, ping_ms = await cls._proxy_get_check(
+                server, port, secret, mode, protocol_deadline
+            )
 
         if proxy_get_ok:
             return cls._protocol_success(ping_ms)
 
-        tcp_ok, tcp_ping_ms = await cls._tcp_check(server, port, timeout=cls.TIMEOUT)
+        tcp_ok, tcp_ping_ms = await cls._tcp_check(
+            server, port, timeout=cls.TIMEOUT
+        )
         if tcp_ok:
             return cls._fallback_success(tcp_ping_ms)
 
@@ -128,6 +143,64 @@ class PingChecker:
             dns_ok=False,
             is_fallback=False,
         )
+
+    @classmethod
+    async def _webproxy_get_check(
+        cls,
+        server: str,
+        secret: str | None,
+        deadline: float,
+    ) -> tuple[bool, int | None]:
+        """Check the webproxy bridge with its real HTTPS GET entry point."""
+        if not secret:
+            return False, None
+
+        try:
+            secret_bytes = bytes.fromhex(secret)
+        except ValueError:
+            return False, None
+
+        context = b"tdesktop-web-proxy-bridge-v1\n" + server.encode("ascii")
+        capability = hmac.new(secret_bytes, context, hashlib.sha256).digest()
+        bridge = (
+            base64.urlsafe_b64encode(capability).rstrip(b"=").decode("ascii")
+        )
+        request = (
+            f"GET /?bridge={bridge} HTTP/1.1\r\n"
+            f"Host: {server}\r\n"
+            "Connection: close\r\n"
+            "User-Agent: Mozilla/5.0\r\n\r\n"
+        ).encode("ascii")
+        loop = asyncio.get_running_loop()
+        writer = None
+        start = loop.time()
+
+        try:
+            remaining = deadline - loop.time()
+            if remaining <= 0:
+                return False, None
+            tls = ssl.create_default_context()
+            reader, writer = await asyncio.wait_for(
+                asyncio.open_connection(
+                    server, 443, ssl=tls, server_hostname=server
+                ),
+                timeout=remaining,
+            )
+            writer.write(request)
+            await asyncio.wait_for(
+                writer.drain(), timeout=deadline - loop.time()
+            )
+            header = await asyncio.wait_for(
+                reader.readuntil(b"\r\n\r\n"), timeout=deadline - loop.time()
+            )
+            status = header.split(b" ", 2)[1]
+            if not status.startswith((b"2", b"3")):
+                return False, None
+            return True, int((loop.time() - start) * 1000)
+        except (_NETWORK_ERRORS, ssl.SSLError, UnicodeError, ValueError):
+            return False, None
+        finally:
+            await cls._close_writer(writer)
 
     @classmethod
     async def _proxy_get_check(
@@ -271,15 +344,17 @@ class PingChecker:
         rnd[cls.DC_IDX_POS : cls.DC_IDX_POS + 4] = struct.pack("<I", dc_idx)
 
         # Extract encryption key and IV (bytes 8-56, reversed)
-        dec_key_and_iv = rnd[cls.SKIP_LEN : cls.SKIP_LEN + cls.KEY_LEN + cls.IV_LEN][
-            ::-1
-        ]
+        dec_key_and_iv = rnd[
+            cls.SKIP_LEN : cls.SKIP_LEN + cls.KEY_LEN + cls.IV_LEN
+        ][::-1]
         dec_key_and_iv[: cls.KEY_LEN]
         dec_key_and_iv[cls.KEY_LEN :]
 
         # For obfuscated handshake, we encrypt the packet itself
         # Use the same key/iv for encryption (reversed back)
-        enc_key_and_iv = rnd[cls.SKIP_LEN : cls.SKIP_LEN + cls.KEY_LEN + cls.IV_LEN]
+        enc_key_and_iv = rnd[
+            cls.SKIP_LEN : cls.SKIP_LEN + cls.KEY_LEN + cls.IV_LEN
+        ]
         enc_key = enc_key_and_iv[: cls.KEY_LEN]
         enc_iv = enc_key_and_iv[cls.KEY_LEN :]
 
@@ -307,7 +382,11 @@ class PingChecker:
 
         try:
             # Try cryptography library
-            from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+            from cryptography.hazmat.primitives.ciphers import (
+                Cipher,
+                algorithms,
+                modes,
+            )
 
             nonce = iv.to_bytes(16, "big")
             cipher = Cipher(algorithms.AES(key), modes.CTR(nonce))
@@ -424,10 +503,12 @@ class PingChecker:
             if name:
                 server_name_entry = struct.pack("!BH", 0, len(name)) + name
                 server_name_list = (
-                    struct.pack("!H", len(server_name_entry)) + server_name_entry
+                    struct.pack("!H", len(server_name_entry))
+                    + server_name_entry
                 )
                 extensions += (
-                    struct.pack("!HH", 0x0000, len(server_name_list)) + server_name_list
+                    struct.pack("!HH", 0x0000, len(server_name_list))
+                    + server_name_list
                 )
 
         # Random padding extension (GREASE)
@@ -451,11 +532,18 @@ class PingChecker:
             + extensions
         )
 
-        handshake = b"\x01" + struct.pack("!I", len(client_hello))[1:] + client_hello
+        handshake = (
+            b"\x01" + struct.pack("!I", len(client_hello))[1:] + client_hello
+        )
 
         # TLS record with randomized version
         tls_version = random.choice([b"\x03\x01", b"\x03\x03"])
-        return b"\x16" + tls_version + struct.pack("!H", len(handshake)) + handshake
+        return (
+            b"\x16"
+            + tls_version
+            + struct.pack("!H", len(handshake))
+            + handshake
+        )
 
     @classmethod
     async def _tcp_check(
@@ -503,7 +591,9 @@ class PingChecker:
         # Extract from URL if present
         if "secret=" in value or "://" in value:
             try:
-                parsed = urlparse(value if "://" in value else f"https://{value}")
+                parsed = urlparse(
+                    value if "://" in value else f"https://{value}"
+                )
                 query = parse_qs(parsed.query)
                 if "secret" in query and query["secret"]:
                     value = query["secret"][0]

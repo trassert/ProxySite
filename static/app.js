@@ -208,6 +208,14 @@ function switchTab(tabId) {
   });
 }
 
+function toggleProxyType() {
+  const type = document.getElementById('proxy-type')?.value;
+  const port = document.getElementById('proxy-port');
+  if (!port) return;
+  port.value = type === 'web' ? '443' : '';
+  port.disabled = type === 'web';
+}
+
 // ============================================
 // Load user votes on page load
 // ============================================
@@ -254,6 +262,7 @@ async function submitAddProxy() {
     const server = document.getElementById('proxy-server')?.value?.trim();
     const port = document.getElementById('proxy-port')?.value?.trim();
     const secret = document.getElementById('proxy-secret')?.value?.trim();
+    const proxyType = document.getElementById('proxy-type')?.value || 'mtproto';
 
     if (!server || !port || !secret) {
       showSnackbar('Please fill all fields');
@@ -263,6 +272,7 @@ async function submitAddProxy() {
     data.server = server;
     data.port = parseInt(port);
     data.secret = secret;
+    data.proxy_type = proxyType;
   } else if (tabId === 'links-tab') {
     const links = document.getElementById('proxy-links')?.value?.trim();
     if (!links) {
@@ -555,6 +565,11 @@ function createProxyCard(proxy) {
       `;
   }
 
+  const isWebProxy = proxy.proxy_type === 'web';
+  const telegramLink = isWebProxy
+    ? `tg://webproxy?server=${proxy.server}&secret=${proxy.secret}`
+    : `tg://proxy?server=${proxy.server}&port=${proxy.port}&secret=${proxy.secret}`;
+
   card.innerHTML = `
     <div class="proxy-header">
       <div>
@@ -594,7 +609,7 @@ function createProxyCard(proxy) {
 
       <div class="link-buttons">
         <a 
-          href="tg://proxy?server=${proxy.server}&port=${proxy.port}&secret=${proxy.secret}" 
+          href="${telegramLink}"
           class="link-btn"
         >
           <svg class="icon" viewBox="0 0 24 24" width="20" height="20"><path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/></svg>
@@ -602,14 +617,14 @@ function createProxyCard(proxy) {
         </a>
         <button 
           class="link-btn" 
-          onclick="copyLink('tg://proxy?server=${proxy.server}&port=${proxy.port}&secret=${proxy.secret}', this)"
+          onclick="copyLink('${telegramLink}', this)"
         >
           <svg class="icon" viewBox="0 0 24 24" width="20" height="20"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
           Copy
         </button>
         <button 
           class="link-btn" 
-          onclick="showQRCode('${proxy.server}', '${proxy.port}', '${proxy.secret}')"
+          onclick="showQRCode('${proxy.server}', '${proxy.port}', '${proxy.secret}', '${proxy.proxy_type}')"
         >
           <svg class="icon" viewBox="0 0 24 24" width="20" height="20"><path d="M3 11h8V3H3v8zm2-6h4v4H5V5zm8-2v8h8V3h-8zm6 6h-4V5h4v4zM3 21h8v-8H3v8zm2-6h4v4H5v-4zm8-2v8h8v-8h-8zm6 6h-4v-4h4v4z"/></svg>
           QR
@@ -666,8 +681,10 @@ async function setPin(proxyId, pinned, password) {
   }
 }
 
-function showQRCode(server, port, secret) {
-  const qrLink = `tg://proxy?server=${server}&port=${port}&secret=${secret}`;
+function showQRCode(server, port, secret, proxyType = 'mtproto') {
+  const qrLink = proxyType === 'web'
+    ? `tg://webproxy?server=${server}&secret=${secret}`
+    : `tg://proxy?server=${server}&port=${port}&secret=${secret}`;
 
   // Clear previous QR code
   const container = document.getElementById('qr-code-container');

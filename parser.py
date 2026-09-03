@@ -6,18 +6,18 @@ Supports tg://proxy and t.me/proxy formats.
 import re
 from urllib.parse import parse_qs, urlparse
 
-from models import ProxyBase
+from models import ProxyBase, ProxyType
 
 
 class ProxyLinkParser:
     """Parser for MTProto proxy links."""
 
     TG_PATTERN = re.compile(
-        r"tg://proxy\?[^\s<>\"'\]\)]+",
+        r"tg://(?:proxy|webproxy)\?[^\s<>\"'\]\)]+",
         re.IGNORECASE,
     )
     HTTPS_PATTERN = re.compile(
-        r"https?://t\.me/proxy\?[^\s<>\"'\]\)]+",
+        r"https?://t\.me/(?:proxy|webproxy)\?[^\s<>\"'\]\)]+",
         re.IGNORECASE,
     )
 
@@ -51,13 +51,25 @@ class ProxyLinkParser:
             server = params.get("server", [None])[0]
             port_str = params.get("port", [None])[0]
             secret = params.get("secret", [None])[0]
+            proxy_type = (
+                ProxyType.WEB
+                if parsed.path.lower() == "/webproxy"
+                else ProxyType.MT_PROTO
+            )
 
-            if not all([server, port_str, secret]):
+            if not all([server, secret]):
                 return None
 
-            port = int(port_str)
+            if proxy_type == ProxyType.WEB:
+                port = 443
+            elif not port_str:
+                return None
+            else:
+                port = int(port_str)
 
-            return ProxyBase(server=server, port=port, secret=secret)
+            return ProxyBase(
+                server=server, port=port, secret=secret, proxy_type=proxy_type
+            )
         except (ValueError, TypeError):
             return None
 
@@ -69,7 +81,7 @@ class ProxyLinkParser:
         """
         proxies: list[ProxyBase] = []
         errors: list[str] = []
-        seen: set[tuple[str, int, str]] = set()
+        seen: set[tuple[str, int, str, ProxyType]] = set()
 
         tg_links = cls.TG_PATTERN.findall(text)
         https_links = cls.HTTPS_PATTERN.findall(text)
@@ -79,7 +91,7 @@ class ProxyLinkParser:
         for link in all_links:
             proxy = cls.parse_single(link)
             if proxy:
-                key = (proxy.server, proxy.port, proxy.secret)
+                key = (proxy.server, proxy.port, proxy.secret, proxy.proxy_type)
                 if key not in seen:
                     seen.add(key)
                     proxies.append(proxy)
@@ -90,9 +102,18 @@ class ProxyLinkParser:
 
     @classmethod
     def generate_link(
-        cls, server: str, port: int, secret: str, format: str = "tg"
+        cls,
+        server: str,
+        port: int,
+        secret: str,
+        format: str = "tg",
+        proxy_type: ProxyType = ProxyType.MT_PROTO,
     ) -> str:
         """Generate proxy link in specified format."""
+        if proxy_type == ProxyType.WEB:
+            if format == "https":
+                return f"https://t.me/webproxy?server={server}&secret={secret}"
+            return f"tg://webproxy?server={server}&secret={secret}"
         if format == "https":
             return f"https://t.me/proxy?server={server}&port={port}&secret={secret}"
         return f"tg://proxy?server={server}&port={port}&secret={secret}"
