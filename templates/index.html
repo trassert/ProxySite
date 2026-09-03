@@ -182,9 +182,10 @@
             </div>
 
             <div class="link-buttons">
+              {% set telegram_link = 'tg://webproxy?server=' ~ proxy.server ~ '&secret=' ~ proxy.secret if proxy.proxy_type.value == 'web' else 'tg://proxy?server=' ~ proxy.server ~ '&port=' ~ proxy.port ~ '&secret=' ~ proxy.secret %}
               <a
-                href="{{ proxy.tg_link }}"
-                data-link="{{ proxy.tg_link }}"
+                href="{{ telegram_link }}"
+                data-link="{{ telegram_link }}"
                 onclick="openTelegramLink(this.dataset.link, event)"
                 class="link-btn">
                 <svg class="icon" viewBox="0 0 24 24"><path
@@ -193,7 +194,7 @@
               </a>
               <button
                 class="link-btn"
-                data-link="{{ proxy.tg_link }}"
+                data-link="{{ telegram_link }}"
                 onclick="copyLink(this.dataset.link, this)">
                 <svg class="icon" viewBox="0 0 24 24"><path
                     d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" /></svg>
