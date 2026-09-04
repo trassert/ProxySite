@@ -464,11 +464,16 @@ async function editProxyNote(proxyId) {
 
     const titleGroup = card?.querySelector(".proxy-title-group");
     if (!titleGroup) return;
-    titleGroup.querySelector(".proxy-note, .note-add-button")?.remove();
+    titleGroup.querySelector(".proxy-note")?.remove();
     const noteMarkup = data.note
-      ? `<div class="proxy-note"><span>${escapeHtml(data.note)}</span><button class="note-edit-button" type="button" onclick="editProxyNote(${proxyId})" title="Edit note" aria-label="Edit note">✎</button></div>`
-      : `<button class="note-edit-button note-add-button" type="button" onclick="editProxyNote(${proxyId})" title="Add note" aria-label="Add note">✎</button>`;
+      ? `<div class="proxy-note"><span>${escapeHtml(data.note)}</span></div>`
+      : "";
     titleGroup.insertAdjacentHTML("beforeend", noteMarkup);
+    const editButton = card.querySelector(".note-edit-button");
+    if (editButton) {
+      editButton.title = data.note ? "Edit note" : "Add note";
+      editButton.setAttribute("aria-label", editButton.title);
+    }
     showSnackbar(data.note ? "Note updated" : "Note cleared");
   } catch (error) {
     console.error("Note update error:", error);
@@ -641,8 +646,8 @@ function createProxyCard(proxy) {
 
   const isWebProxy = proxy.proxy_type === "web";
   const noteMarkup = proxy.note
-    ? `<div class="proxy-note"><span>${escapeHtml(proxy.note)}</span><button class="note-edit-button" type="button" onclick="editProxyNote(${proxy.id})" title="Edit note" aria-label="Edit note">✎</button></div>`
-    : `<button class="note-edit-button note-add-button" type="button" onclick="editProxyNote(${proxy.id})" title="Add note" aria-label="Add note">✎</button>`;
+    ? `<div class="proxy-note"><span>${escapeHtml(proxy.note)}</span></div>`
+    : "";
   const pingText =
     proxy.ping_status === "failed"
       ? "Down"
@@ -657,7 +662,7 @@ function createProxyCard(proxy) {
   card.innerHTML = `
     <div class="proxy-header">
       <div class="proxy-title-group">
-        <h2 class="proxy-server">${isWebProxy ? '<svg class="web-proxy-icon" viewBox="0 0 24 24" aria-label="Internet" role="img"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm6.92 9h-3.04a15.7 15.7 0 0 0-1.18-5.02A8.03 8.03 0 0 1 18.92 11ZM12 4c.83 1.2 1.55 3.67 1.83 7h-3.66C10.45 7.67 11.17 5.2 12 4ZM9.3 5.98A15.7 15.7 0 0 0 8.12 11H5.08a8.03 8.03 0 0 1 4.22-5.02ZM5.08 13h3.04c.2 1.86.62 3.58 1.18 5.02A8.03 8.03 0 0 1 5.08 13ZM12 20c-.83-1.2-1.55-3.67-1.83-7h3.66c-.28 3.33-1 5.8-1.83 7Zm2.7-1.98A15.7 15.7 0 0 0 15.88 13h3.04a8.03 8.03 0 0 1-4.22 5.02Z" /></svg>' : ""}${proxy.server}<span class="proxy-port">:${proxy.port}</span></h2>
+        <h2 class="proxy-server">${proxy.server}<span class="proxy-port">:${proxy.port}</span>${isWebProxy ? '<svg class="web-proxy-icon" viewBox="0 0 24 24" aria-label="Internet" role="img"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm6.92 9h-3.04a15.7 15.7 0 0 0-1.18-5.02A8.03 8.03 0 0 1 18.92 11ZM12 4c.83 1.2 1.55 3.67 1.83 7h-3.66C10.45 7.67 11.17 5.2 12 4ZM9.3 5.98A15.7 15.7 0 0 0 8.12 11H5.08a8.03 8.03 0 0 1 4.22-5.02ZM5.08 13h3.04c.2 1.86.62 3.58 1.18 5.02A8.03 8.03 0 0 1 5.08 13ZM12 20c-.83-1.2-1.55-3.67-1.83-7h3.66c-.28 3.33-1 5.8-1.83 7Zm2.7-1.98A15.7 15.7 0 0 0 15.88 13h3.04a8.03 8.03 0 0 1-4.22 5.02Z" /></svg>' : ""}</h2>
         ${noteMarkup}
       </div>
       <button class="ping-badge ${badgeClass}" onclick="checkPing(${proxy.id})" title="Click to refresh">
@@ -689,6 +694,9 @@ function createProxyCard(proxy) {
         </button>
         <button class="pin-button ${proxy.pinned ? "pinned" : ""}" onclick="togglePin(${proxy.id}, ${proxy.pinned ? "false" : "true"})" title="${proxy.pinned ? "Unpin proxy" : "Pin proxy"}">
           <svg class="icon" viewBox="0 0 24 24" width="20" height="20"><path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>
+        </button>
+        <button class="note-edit-button" type="button" onclick="editProxyNote(${proxy.id})" title="${proxy.note ? "Edit note" : "Add note"}" aria-label="${proxy.note ? "Edit note" : "Add note"}">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25ZM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83Z"/></svg>
         </button>
       </div>
 

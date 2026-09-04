@@ -421,7 +421,7 @@ html.dark .theme-toggle .icon-moon {
 }
 
 .proxy-title-group .proxy-server {
-  gap: 12px;
+  gap: 0;
 }
 
 .web-proxy-icon {
@@ -430,7 +430,7 @@ html.dark .theme-toggle .icon-moon {
   flex: 0 0 24px;
   color: var(--md-sys-color-primary);
   fill: currentColor;
-  margin-inline-end: 2px;
+  margin-inline-start: 8px;
 }
 
 .proxy-note {
@@ -444,23 +444,34 @@ html.dark .theme-toggle .icon-moon {
 }
 
 .note-edit-button {
-  flex: 0 0 auto;
-  border: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  border: 1px solid transparent;
+  border-radius: var(--md-sys-shape-corner-full);
   background: transparent;
-  color: var(--md-sys-color-primary);
+  color: var(--md-sys-color-on-surface-variant);
   cursor: pointer;
-  font-size: 1.15rem;
-  line-height: 1;
-  padding: 2px 4px;
+  transition:
+    background var(--md-sys-motion-duration-short)
+      var(--md-sys-motion-easing-standard),
+    color var(--md-sys-motion-duration-short)
+      var(--md-sys-motion-easing-standard);
 }
 
-.note-add-button {
-  margin-top: 4px;
+.note-edit-button:hover {
+  background: var(--md-sys-color-surface-container);
+  color: var(--md-sys-color-primary);
 }
 
 .proxy-port {
   color: var(--md-sys-color-outline);
   font-weight: 400;
+  margin-inline-start: 6px;
+  white-space: nowrap;
 }
 
 .pin-button {
@@ -865,6 +876,10 @@ html.dark .ping-badge.fallback {
   font: var(--md-sys-typescale-body-medium);
   color: var(--md-sys-color-outline);
   margin-top: 8px;
+}
+
+.note-field {
+  margin-top: 20px;
 }
 
 /* MD3 Dialog Tab Buttons */
