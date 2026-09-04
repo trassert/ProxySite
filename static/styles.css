@@ -410,9 +410,9 @@ html.dark .theme-toggle .icon-moon {
 .proxy-server {
   font: var(--md-sys-typescale-title-large);
   color: var(--md-sys-color-on-surface);
-  word-break: break-all;
   display: flex;
   align-items: center;
+  min-width: 0;
   gap: 8px;
 }
 
@@ -425,8 +425,17 @@ html.dark .theme-toggle .icon-moon {
 }
 
 .proxy-address {
+  display: block;
+  flex: 1 1 auto;
   min-width: 0;
-  overflow-wrap: anywhere;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  white-space: nowrap;
+}
+
+.proxy-address::-webkit-scrollbar {
+  display: none;
 }
 
 .web-proxy-icon {
@@ -449,6 +458,8 @@ html.dark .theme-toggle .icon-moon {
 }
 
 .note-edit-button {
+  appearance: none;
+  -webkit-appearance: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -460,6 +471,10 @@ html.dark .theme-toggle .icon-moon {
   background: transparent;
   color: var(--md-sys-color-on-surface-variant);
   cursor: pointer;
+  font: inherit;
+  line-height: 1;
+  outline: none;
+  padding: 0;
   transition:
     background var(--md-sys-motion-duration-short)
       var(--md-sys-motion-easing-standard),
@@ -470,6 +485,15 @@ html.dark .theme-toggle .icon-moon {
 .note-edit-button:hover {
   background: var(--md-sys-color-surface-container);
   color: var(--md-sys-color-primary);
+}
+
+.note-edit-button:focus {
+  outline: none;
+}
+
+.note-edit-button:focus-visible {
+  outline: 2px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
 }
 
 .proxy-port {
@@ -514,12 +538,19 @@ html.dark .theme-toggle .icon-moon {
 }
 
 .ping-badge {
+  appearance: none;
+  -webkit-appearance: none;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
+  width: 112px;
+  min-width: 112px;
   padding: 6px 14px;
+  border: 0;
   border-radius: var(--md-sys-shape-corner-full);
   font: var(--md-sys-typescale-label-large);
+  outline: none;
   white-space: nowrap;
 }
 
