@@ -430,6 +430,11 @@ html.dark .theme-toggle .icon-moon {
   min-width: 0;
   overflow-x: auto;
   overflow-y: hidden;
+  scrollbar-width: none;
+  white-space: nowrap;
+}
+
+.proxy-address.is-scrollable {
   mask-image: linear-gradient(
     to right,
     transparent 0,
@@ -444,8 +449,6 @@ html.dark .theme-toggle .icon-moon {
     black calc(100% - 12px),
     transparent 100%
   );
-  scrollbar-width: none;
-  white-space: nowrap;
 }
 
 .proxy-address::-webkit-scrollbar {

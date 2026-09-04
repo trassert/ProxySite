@@ -25,6 +25,15 @@ function escapeHtml(value) {
   return div.innerHTML;
 }
 
+function updateProxyAddressMasks() {
+  document.querySelectorAll(".proxy-address").forEach((address) => {
+    address.classList.toggle(
+      "is-scrollable",
+      address.scrollWidth > address.clientWidth,
+    );
+  });
+}
+
 // ============================================
 // Theme Toggle
 // ============================================
@@ -296,6 +305,8 @@ async function loadUserVotes() {
 
 // Load votes when page loads
 document.addEventListener("DOMContentLoaded", loadUserVotes);
+document.addEventListener("DOMContentLoaded", updateProxyAddressMasks);
+window.addEventListener("resize", updateProxyAddressMasks);
 
 // ============================================
 // Trigger ping check
@@ -532,12 +543,7 @@ async function checkPing(proxyId) {
     }
   } catch (error) {
     badge.className = "ping-badge failed";
-    badge.innerHTML = `
-      <svg class="icon" viewBox="0 0 24 24" width="16" height="16">
-        ${pingIcon("failed")}
-      </svg>
-      Error
-    `;
+    badge.innerHTML = `${pingIcon("failed")} Error`;
     showSnackbar("Ping check failed");
   }
 }
@@ -625,6 +631,7 @@ async function refreshProxyList(sortBy = "likes") {
       const card = createProxyCard(proxy);
       proxyList.appendChild(card);
     });
+    updateProxyAddressMasks();
 
     // Re-load user votes
     await loadUserVotes();
