@@ -645,6 +645,9 @@ function createProxyCard(proxy) {
   }
 
   const isWebProxy = proxy.proxy_type === "web";
+  const webIcon = isWebProxy
+    ? '<svg class="web-proxy-icon" viewBox="0 0 24 24" aria-label="Internet" role="img"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm6.92 9h-3.04a15.7 15.7 0 0 0-1.18-5.02A8.03 8.03 0 0 1 18.92 11ZM12 4c.83 1.2 1.55 3.67 1.83 7h-3.66C10.45 7.67 11.17 5.2 12 4ZM9.3 5.98A15.7 15.7 0 0 0 8.12 11H5.08a8.03 8.03 0 0 1 4.22-5.02ZM5.08 13h3.04c.2 1.86.62 3.58 1.18 5.02A8.03 8.03 0 0 1 5.08 13ZM12 20c-.83-1.2-1.55-3.67-1.83-7h3.66c-.28 3.33-1 5.8-1.83 7Zm2.7-1.98A15.7 15.7 0 0 0 15.88 13h3.04a8.03 8.03 0 0 1-4.22 5.02Z" /></svg>'
+    : "";
   const noteMarkup = proxy.note
     ? `<div class="proxy-note"><span>${escapeHtml(proxy.note)}</span></div>`
     : "";
@@ -662,7 +665,7 @@ function createProxyCard(proxy) {
   card.innerHTML = `
     <div class="proxy-header">
       <div class="proxy-title-group">
-        <h2 class="proxy-server">${proxy.server}<span class="proxy-port">:${proxy.port}</span>${isWebProxy ? '<svg class="web-proxy-icon" viewBox="0 0 24 24" aria-label="Internet" role="img"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm6.92 9h-3.04a15.7 15.7 0 0 0-1.18-5.02A8.03 8.03 0 0 1 18.92 11ZM12 4c.83 1.2 1.55 3.67 1.83 7h-3.66C10.45 7.67 11.17 5.2 12 4ZM9.3 5.98A15.7 15.7 0 0 0 8.12 11H5.08a8.03 8.03 0 0 1 4.22-5.02ZM5.08 13h3.04c.2 1.86.62 3.58 1.18 5.02A8.03 8.03 0 0 1 5.08 13ZM12 20c-.83-1.2-1.55-3.67-1.83-7h3.66c-.28 3.33-1 5.8-1.83 7Zm2.7-1.98A15.7 15.7 0 0 0 15.88 13h3.04a8.03 8.03 0 0 1-4.22 5.02Z" /></svg>' : ""}</h2>
+        <h2 class="proxy-server"><span class="proxy-address">${proxy.server}<span class="proxy-port">:${proxy.port}</span></span>${webIcon}</h2>
         ${noteMarkup}
       </div>
       <button class="ping-badge ${badgeClass}" onclick="checkPing(${proxy.id})" title="Click to refresh">
@@ -779,7 +782,6 @@ async function setPin(proxyId, pinned, password) {
     showSnackbar("Network error");
   }
 }
-
 function showQRCode(server, port, secret, proxyType = "mtproto") {
   const qrLink =
     proxyType === "web"

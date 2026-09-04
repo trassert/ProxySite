@@ -195,7 +195,7 @@
               <h2
                 class="proxy-server{% if proxy.proxy_type.value == 'web' %} web-proxy-server{% endif %}"
               >
-                {{ proxy.server }}<span class="proxy-port">:{{ proxy.port }}</span>
+                <span class="proxy-address">{{ proxy.server }}<span class="proxy-port">:{{ proxy.port }}</span></span>
                 {% if proxy.proxy_type.value == 'web' %}<svg
                   class="web-proxy-icon"
                   viewBox="0 0 24 24"

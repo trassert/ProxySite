@@ -424,6 +424,11 @@ html.dark .theme-toggle .icon-moon {
   gap: 0;
 }
 
+.proxy-address {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .web-proxy-icon {
   width: 24px;
   height: 24px;
@@ -516,6 +521,15 @@ html.dark .theme-toggle .icon-moon {
   border-radius: var(--md-sys-shape-corner-full);
   font: var(--md-sys-typescale-label-large);
   white-space: nowrap;
+}
+
+.ping-badge:focus {
+  outline: none;
+}
+
+.ping-badge:focus-visible {
+  outline: 3px solid var(--md-sys-color-primary);
+  outline-offset: 2px;
 }
 
 .ping-badge.ok {
