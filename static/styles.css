@@ -430,6 +430,20 @@ html.dark .theme-toggle .icon-moon {
   min-width: 0;
   overflow-x: auto;
   overflow-y: hidden;
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    black 12px,
+    black calc(100% - 12px),
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    black 12px,
+    black calc(100% - 12px),
+    transparent 100%
+  );
   scrollbar-width: none;
   white-space: nowrap;
 }
@@ -547,7 +561,7 @@ html.dark .theme-toggle .icon-moon {
   width: 112px;
   min-width: 112px;
   padding: 6px 14px;
-  border: 0;
+  border: 2px solid transparent;
   border-radius: var(--md-sys-shape-corner-full);
   font: var(--md-sys-typescale-label-large);
   outline: none;
@@ -558,40 +572,41 @@ html.dark .theme-toggle .icon-moon {
   outline: none;
 }
 
-.ping-badge:focus-visible {
-  outline: 3px solid var(--md-sys-color-primary);
-  outline-offset: 2px;
-}
-
 .ping-badge.ok {
   background: var(--md-sys-color-success-container);
   color: var(--md-sys-color-on-success-container);
+  border-color: #087f5b;
 }
 
 .ping-badge.warning {
   background: #fff3e0;
   color: #e65100;
+  border-color: #c77700;
 }
 
 html.dark .ping-badge.warning {
   background: #4a2800;
   color: #ffb74d;
+  border-color: #b96800;
 }
 
 .ping-badge.failed {
   background: var(--md-sys-color-error-container);
   color: var(--md-sys-color-on-error-container);
+  border-color: #b3261e;
 }
 
 .ping-badge.pending {
   background: var(--md-sys-color-surface-container-highest);
   color: var(--md-sys-color-on-surface-variant);
+  border-color: var(--md-sys-color-outline);
 }
 
 /* Fallback badge - TCP only (match Add Proxy primary button) */
 .ping-badge.fallback {
   background: var(--md-sys-color-primary);
   color: var(--md-sys-color-on-primary);
+  border-color: #004f4f;
 }
 
 html.dark .ping-badge.fallback {
