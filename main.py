@@ -19,6 +19,7 @@ from config import config, logger
 from database import db
 from http_logger import RequestLogger
 from models import (
+    NoteUpdate,
     ParseLinksRequest,
     ParseLinksResponse,
     PingStatus,
@@ -71,7 +72,9 @@ async def ping_worker() -> None:
             proxies = await db.get_all_for_ping()
             checked = 0
             for proxy_id, server, port, secret, proxy_type in proxies:
-                result = await PingChecker.check(server, port, secret, proxy_type)
+                result = await PingChecker.check(
+                    server, port, secret, proxy_type
+                )
                 await db.update_ping(
                     proxy_id=proxy_id,
                     ping_ms=result.ping_ms,
@@ -83,7 +86,9 @@ async def ping_worker() -> None:
                 )
                 checked += 1
                 await asyncio.sleep(0.5)
-            logger.info("Ping cycle completed: {count} proxies checked", count=checked)
+            logger.info(
+                "Ping cycle completed: {count} proxies checked", count=checked
+            )
         except Exception as exc:
             logger.exception("Ping worker failed: {error}", error=exc)
 
@@ -182,7 +187,9 @@ async def index(
     sort: str = "likes",
 ) -> Response:
     """Main page with proxy list."""
-    sort_by = SortBy(sort) if sort in [s.value for s in SortBy] else SortBy.LIKES
+    sort_by = (
+        SortBy(sort) if sort in [s.value for s in SortBy] else SortBy.LIKES
+    )
     proxies = await db.get_proxies(sort_by=sort_by, limit=100)
     total = await db.get_total_count()
     stats = await db.get_stats()
@@ -210,7 +217,9 @@ async def list_proxies(
     offset: int = 0,
 ) -> ProxyListResponse:
     """Get list of proxies."""
-    sort_by = SortBy(sort) if sort in [s.value for s in SortBy] else SortBy.LIKES
+    sort_by = (
+        SortBy(sort) if sort in [s.value for s in SortBy] else SortBy.LIKES
+    )
     proxies = await db.get_proxies(sort_by=sort_by, limit=limit, offset=offset)
     total = await db.get_total_count()
 
@@ -311,7 +320,9 @@ async def vote(
     # Return new position when liked for dynamic re-sorting
     new_position = None
     if data.vote_type == "like":
-        proxies = await db.get_proxies(sort_by=SortBy.LIKES, limit=100, offset=0)
+        proxies = await db.get_proxies(
+            sort_by=SortBy.LIKES, limit=100, offset=0
+        )
         new_position = next(
             (i for i, p in enumerate(proxies) if p.id == data.proxy_id), -1
         )
@@ -344,6 +355,23 @@ async def pin_proxy(
 
     await db.set_proxy_pinned(proxy_id, data.pinned)
     return {"success": True, "pinned": data.pinned}
+
+
+@app.patch("/api/proxies/{proxy_id}/note")
+async def update_proxy_note(proxy_id: int, data: NoteUpdate) -> dict:
+    """Update or clear a proxy note with admin authentication."""
+    if not config.app.password:
+        raise HTTPException(
+            status_code=403,
+            detail="Note editing is not configured",
+        )
+    if data.password != config.app.password:
+        raise HTTPException(status_code=403, detail="Invalid password")
+    if not await db.get_proxy(proxy_id):
+        raise HTTPException(status_code=404, detail="Proxy not found")
+
+    await db.update_proxy_note(proxy_id, data.note)
+    return {"success": True, "note": data.note}
 
 
 @app.get("/api/vote/{proxy_id}")
@@ -409,6 +437,7 @@ async def add_proxy_api(data: dict) -> dict:
                     port=int(data["port"]),
                     secret=data["secret"],
                     proxy_type=data.get("proxy_type", "mtproto"),
+                    note=data.get("note"),
                 )
                 result, error = await _validate_and_create_proxy(proxy)
                 if error and error != "Proxy already exists":
@@ -513,6 +542,7 @@ async def add_proxy_form(
     server: str = Form(default=""),
     port: int = Form(default=0),
     secret: str = Form(default=""),
+    note: str = Form(default=""),
     links: str = Form(default=""),
 ) -> Response:
     """Add proxy via form submission."""
@@ -535,7 +565,9 @@ async def add_proxy_form(
 
     elif server and port and secret:
         try:
-            proxy = ProxyCreate(server=server, port=port, secret=secret)
+            proxy = ProxyCreate(
+                server=server, port=port, secret=secret, note=note
+            )
             result, error = await _validate_and_create_proxy(proxy)
             if result:
                 added += 1

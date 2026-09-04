@@ -1,9 +1,9 @@
-'use client'
+"use client";
 
-import * as React from 'react'
-import * as SliderPrimitive from '@radix-ui/react-slider'
+import * as React from "react";
+import * as SliderPrimitive from "@radix-ui/react-slider";
 
-import { cn } from '@/lib/utils'
+import { cn } from "@/lib/utils";
 
 function Slider({
   className,
@@ -21,7 +21,7 @@ function Slider({
           ? defaultValue
           : [min, max],
     [value, defaultValue, min, max],
-  )
+  );
 
   return (
     <SliderPrimitive.Root
@@ -31,7 +31,7 @@ function Slider({
       min={min}
       max={max}
       className={cn(
-        'relative flex w-full touch-none items-center select-none data-[disabled]:opacity-50 data-[orientation=vertical]:h-full data-[orientation=vertical]:min-h-44 data-[orientation=vertical]:w-auto data-[orientation=vertical]:flex-col',
+        "relative flex w-full touch-none items-center select-none data-[disabled]:opacity-50 data-[orientation=vertical]:h-full data-[orientation=vertical]:min-h-44 data-[orientation=vertical]:w-auto data-[orientation=vertical]:flex-col",
         className,
       )}
       {...props}
@@ -53,7 +53,7 @@ function Slider({
         />
       ))}
     </SliderPrimitive.Root>
-  )
+  );
 }
 
-export { Slider }
+export { Slider };

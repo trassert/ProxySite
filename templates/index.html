@@ -1,38 +1,54 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en" class="dark">
   <head>
-    <link rel="icon" type="image/x-icon" href="./static/favicon.ico">
-    <link rel="icon" type="image/png" sizes="512x512"
-      href="./static/favicon.png">
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#006A6A">
-    <meta name="description"
-      content="Community-driven Telegram proxy aggregator with voting system">
+    <link rel="icon" type="image/x-icon" href="./static/favicon.ico" />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="512x512"
+      href="./static/favicon.png"
+    />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#006A6A" />
+    <meta
+      name="description"
+      content="Community-driven Telegram proxy aggregator with voting system"
+    />
     <title>MTProto Proxy Hub</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
-      rel="stylesheet">
-    <link rel="stylesheet" href="./static/styles.css">
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./static/styles.css" />
     <script>
-    // Apply saved theme immediately to prevent flash
-    if (localStorage.getItem('theme') === 'light') {
-      document.documentElement.classList.remove('dark');
-    }
-  </script>
+      // Apply saved theme immediately to prevent flash
+      if (localStorage.getItem("theme") === "light") {
+        document.documentElement.classList.remove("dark");
+      }
+    </script>
   </head>
   <body>
     <div class="app-container">
       <!-- Header -->
       <header class="app-header">
-        <button class="theme-toggle" onclick="toggleTheme()"
-          aria-label="Toggle theme">
-          <svg class="icon-sun" viewBox="0 0 24 24"><path
-              d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58c-.39-.39-1.03-.39-1.41 0-.39.39-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0 .39-.38.39-1.02 0-1.41L5.99 4.58zm12.37 12.37c-.39-.39-1.03-.39-1.41 0-.39.39-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0 .39-.39.39-1.03 0-1.41l-1.06-1.06zm1.06-10.96c.39-.39.39-1.03 0-1.41-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41.38.39 1.02.39 1.41 0l1.06-1.06zM7.05 18.36c.39-.39.39-1.03 0-1.41-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41.38.39 1.02.39 1.41 0l1.06-1.06z" /></svg>
-          <svg class="icon-moon" viewBox="0 0 24 24"><path
-              d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-2.98 0-5.4-2.42-5.4-5.4 0-1.81.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z" /></svg>
+        <button
+          class="theme-toggle"
+          onclick="toggleTheme()"
+          aria-label="Toggle theme"
+        >
+          <svg class="icon-sun" viewBox="0 0 24 24">
+            <path
+              d="M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zM2 13h2c.55 0 1-.45 1-1s-.45-1-1-1H2c-.55 0-1 .45-1 1s.45 1 1 1zm18 0h2c.55 0 1-.45 1-1s-.45-1-1-1h-2c-.55 0-1 .45-1 1s.45 1 1 1zM11 2v2c0 .55.45 1 1 1s1-.45 1-1V2c0-.55-.45-1-1-1s-1 .45-1 1zm0 18v2c0 .55.45 1 1 1s1-.45 1-1v-2c0-.55-.45-1-1-1s-1 .45-1 1zM5.99 4.58c-.39-.39-1.03-.39-1.41 0-.39.39-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0 .39-.38.39-1.02 0-1.41L5.99 4.58zm12.37 12.37c-.39-.39-1.03-.39-1.41 0-.39.39-.39 1.03 0 1.41l1.06 1.06c.39.39 1.03.39 1.41 0 .39-.39.39-1.03 0-1.41l-1.06-1.06zm1.06-10.96c.39-.39.39-1.03 0-1.41-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41.38.39 1.02.39 1.41 0l1.06-1.06zM7.05 18.36c.39-.39.39-1.03 0-1.41-.39-.39-1.03-.39-1.41 0l-1.06 1.06c-.39.39-.39 1.03 0 1.41.38.39 1.02.39 1.41 0l1.06-1.06z"
+            />
+          </svg>
+          <svg class="icon-moon" viewBox="0 0 24 24">
+            <path
+              d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-2.98 0-5.4-2.42-5.4-5.4 0-1.81.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z"
+            />
+          </svg>
         </button>
         <div class="header-content">
           <h1 class="app-title">MTProto Proxy Hub</h1>
@@ -42,40 +58,59 @@
 
       <!-- Top Banner -->
       <div class="repo-banner">
-        Star our <a href="https://github.com/trassert/ProxySite" target="_blank" rel="noreferrer noopener">repo</a>, this means a lot!
+        Star our
+        <a
+          href="https://github.com/trassert/ProxySite"
+          target="_blank"
+          rel="noreferrer noopener"
+          >repo</a
+        >, this means a lot!
       </div>
 
       <!-- Stats Bar -->
       <div class="stats-bar">
         <div class="stat-chip">
-          <svg class="icon" viewBox="0 0 24 24"><path
-              d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" /></svg>
+          <svg class="icon" viewBox="0 0 24 24">
+            <path
+              d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"
+            />
+          </svg>
           <span class="value">{{ stats.total_proxies }}</span> proxies
         </div>
         <div class="stat-chip">
-          <svg class="icon" viewBox="0 0 24 24"><path
-              d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" /></svg>
+          <svg class="icon" viewBox="0 0 24 24">
+            <path
+              d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
+            />
+          </svg>
           <span class="value">{{ stats.total_likes }}</span> likes
         </div>
         <div class="stat-chip">
-          <svg class="icon" viewBox="0 0 24 24"><path
-              d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" /></svg>
+          <svg class="icon" viewBox="0 0 24 24">
+            <path
+              d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"
+            />
+          </svg>
           <span class="value">{{ stats.online_count or 0 }}</span> online
         </div>
         {% if stats.avg_ping_ms %}
         <div class="stat-chip">
-          <svg class="icon" viewBox="0 0 24 24"><path
-              d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z" /></svg>
+          <svg class="icon" viewBox="0 0 24 24">
+            <path
+              d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"
+            />
+          </svg>
           <span class="value">{{ stats.avg_ping_ms }}ms</span> avg
         </div>
         {% endif %}
       </div>
 
       <!-- Add Proxy Button -->
-      <div style="text-align: center; margin-bottom: 24px;">
+      <div style="text-align: center; margin-bottom: 24px">
         <button class="btn btn-filled" onclick="openDialog('add-dialog')">
-          <svg class="icon" viewBox="0 0 24 24"><path
-              d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" /></svg>
+          <svg class="icon" viewBox="0 0 24 24">
+            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
+          </svg>
           Add Proxy
         </button>
       </div>
@@ -86,26 +121,62 @@
         <div class="segmented-buttons">
           <button
             class="segment-btn {% if sort_by == 'likes' %}active{% endif %}"
-            onclick="sortBy('likes')">
-            <svg class="icon" viewBox="0 0 24 24"
-              style="width:16px;height:16px;margin-right:4px;vertical-align:middle;"><path
-                d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" /></svg>
+            onclick="sortBy('likes')"
+          >
+            <svg
+              class="icon"
+              viewBox="0 0 24 24"
+              style="
+                width: 16px;
+                height: 16px;
+                margin-right: 4px;
+                vertical-align: middle;
+              "
+            >
+              <path
+                d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
+              />
+            </svg>
             Top
           </button>
           <button
             class="segment-btn {% if sort_by == 'ping' %}active{% endif %}"
-            onclick="sortBy('ping')">
-            <svg class="icon" viewBox="0 0 24 24"
-              style="width:16px;height:16px;margin-right:4px;vertical-align:middle;"><path
-                d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z" /></svg>
+            onclick="sortBy('ping')"
+          >
+            <svg
+              class="icon"
+              viewBox="0 0 24 24"
+              style="
+                width: 16px;
+                height: 16px;
+                margin-right: 4px;
+                vertical-align: middle;
+              "
+            >
+              <path
+                d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"
+              />
+            </svg>
             Ping
           </button>
           <button
             class="segment-btn {% if sort_by == 'newest' %}active{% endif %}"
-            onclick="sortBy('newest')">
-            <svg class="icon" viewBox="0 0 24 24"
-              style="width:16px;height:16px;margin-right:4px;vertical-align:middle;"><path
-                d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z" /></svg>
+            onclick="sortBy('newest')"
+          >
+            <svg
+              class="icon"
+              viewBox="0 0 24 24"
+              style="
+                width: 16px;
+                height: 16px;
+                margin-right: 4px;
+                vertical-align: middle;
+              "
+            >
+              <path
+                d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"
+              />
+            </svg>
             New
           </button>
         </div>
@@ -115,39 +186,91 @@
       {% if proxies %}
       <div class="proxy-list">
         {% for proxy in proxies %}
-        <article class="proxy-card{% if proxy.pinned %} pinned{% endif %}" data-proxy-id="{{ proxy.id }}">
+        <article
+          class="proxy-card{% if proxy.pinned %} pinned{% endif %}"
+          data-proxy-id="{{ proxy.id }}"
+        >
           <div class="proxy-header">
-              <div>
-                <h2 class="proxy-server{% if proxy.proxy_type.value == 'web' %} web-proxy-server{% endif %}">
-                  {% if proxy.proxy_type.value == 'web' %}<svg class="web-proxy-icon" viewBox="0 0 24 24" aria-label="Internet" role="img"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm6.92 9h-3.04a15.7 15.7 0 0 0-1.18-5.02A8.03 8.03 0 0 1 18.92 11ZM12 4c.83 1.2 1.55 3.67 1.83 7h-3.66C10.45 7.67 11.17 5.2 12 4ZM9.3 5.98A15.7 15.7 0 0 0 8.12 11H5.08a8.03 8.03 0 0 1 4.22-5.02ZM5.08 13h3.04c.2 1.86.62 3.58 1.18 5.02A8.03 8.03 0 0 1 5.08 13ZM12 20c-.83-1.2-1.55-3.67-1.83-7h3.66c-.28 3.33-1 5.8-1.83 7Zm2.7-1.98A15.7 15.7 0 0 0 15.88 13h3.04a8.03 8.03 0 0 1-4.22 5.02Z" /></svg>{% endif %}{{ proxy.server }}<span
-                  class="proxy-port">:{{ proxy.port }}</span></h2>
+            <div class="proxy-title-group">
+              <h2
+                class="proxy-server{% if proxy.proxy_type.value == 'web' %} web-proxy-server{% endif %}"
+              >
+                {% if proxy.proxy_type.value == 'web' %}<svg
+                  class="web-proxy-icon"
+                  viewBox="0 0 24 24"
+                  aria-label="Internet"
+                  role="img"
+                >
+                  <path
+                    d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm6.92 9h-3.04a15.7 15.7 0 0 0-1.18-5.02A8.03 8.03 0 0 1 18.92 11ZM12 4c.83 1.2 1.55 3.67 1.83 7h-3.66C10.45 7.67 11.17 5.2 12 4ZM9.3 5.98A15.7 15.7 0 0 0 8.12 11H5.08a8.03 8.03 0 0 1 4.22-5.02ZM5.08 13h3.04c.2 1.86.62 3.58 1.18 5.02A8.03 8.03 0 0 1 5.08 13ZM12 20c-.83-1.2-1.55-3.67-1.83-7h3.66c-.28 3.33-1 5.8-1.83 7Zm2.7-1.98A15.7 15.7 0 0 0 15.88 13h3.04a8.03 8.03 0 0 1-4.22 5.02Z"
+                  /></svg
+                >{% endif %}{{ proxy.server }}<span class="proxy-port"
+                  >:{{ proxy.port }}</span
+                >
+              </h2>
+              {% if proxy.note %}
+              <div class="proxy-note">
+                <span>{{ proxy.note }}</span>
+                <button
+                  class="note-edit-button"
+                  type="button"
+                  onclick="editProxyNote({{ proxy.id }})"
+                  title="Edit note"
+                  aria-label="Edit note"
+                >
+                  &#9998;
+                </button>
+              </div>
+              {% else %}
+              <button
+                class="note-edit-button note-add-button"
+                type="button"
+                onclick="editProxyNote({{ proxy.id }})"
+                title="Add note"
+                aria-label="Add note"
+              >
+                &#9998;
+              </button>
+              {% endif %}
             </div>
             {% set badge_class = 'fallback' if proxy.is_fallback else
             proxy.ping_status.value %}
-            <button class="ping-badge {{ badge_class }}"
+            <button
+              class="ping-badge {{ badge_class }}"
               onclick="checkPing(this.closest('.proxy-card').dataset.proxyId)"
-              title="Click to refresh">
+              title="Click to refresh"
+            >
               {% if proxy.is_fallback %}
-              <svg class="icon" viewBox="0 0 24 24"><path
-                  d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z" /></svg>
-              {{ proxy.ping_ms }}ms
-              {% elif proxy.ping_status.value == 'ok' %}
-              <svg class="icon" viewBox="0 0 24 24"><path
-                  d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" /></svg>
-              {{ proxy.ping_ms }}ms
-              {% elif proxy.ping_status.value == 'warning' %}
-              <svg class="icon" viewBox="0 0 24 24"><path
-                  d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z" /></svg>
-              {{ proxy.ping_ms }}ms
-              {% elif proxy.ping_status.value == 'failed' %}
-              <svg class="icon" viewBox="0 0 24 24"><path
-                  d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" /></svg>
-              Down
-              {% else %}
-              <svg class="icon" viewBox="0 0 24 24"><path
-                  d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" /></svg>
-              Pending
-              {% endif %}
+              <svg class="icon" viewBox="0 0 24 24">
+                <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z" />
+              </svg>
+              {{ proxy.ping_ms }}ms {% elif proxy.ping_status.value == 'ok' %}
+              <svg class="icon" viewBox="0 0 24 24">
+                <path
+                  d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"
+                />
+              </svg>
+              {{ proxy.ping_ms }}ms {% elif proxy.ping_status.value == 'warning'
+              %}
+              <svg class="icon" viewBox="0 0 24 24">
+                <path
+                  d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"
+                />
+              </svg>
+              {{ proxy.ping_ms }}ms {% elif proxy.ping_status.value == 'failed'
+              %}
+              <svg class="icon" viewBox="0 0 24 24">
+                <path
+                  d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"
+                />
+              </svg>
+              Down {% else %}
+              <svg class="icon" viewBox="0 0 24 24">
+                <path
+                  d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"
+                />
+              </svg>
+              Pending {% endif %}
             </button>
           </div>
 
@@ -159,51 +282,85 @@
                 class="vote-btn like"
                 data-proxy-id="{{ proxy.id }}"
                 data-vote="like"
-                onclick="vote(this.closest('.proxy-card').dataset.proxyId, 'like')">
-                <svg class="icon" viewBox="0 0 24 24"><path
-                    d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z" /></svg>
+                onclick="
+                  vote(this.closest('.proxy-card').dataset.proxyId, 'like')
+                "
+              >
+                <svg class="icon" viewBox="0 0 24 24">
+                  <path
+                    d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-2z"
+                  />
+                </svg>
                 <span class="count">{{ proxy.likes }}</span>
               </button>
               <button
                 class="vote-btn dislike"
                 data-proxy-id="{{ proxy.id }}"
                 data-vote="dislike"
-                onclick="vote(this.closest('.proxy-card').dataset.proxyId, 'dislike')">
-                <svg class="icon" viewBox="0 0 24 24"><path
-                    d="M15 3H6c-.83 0-1.54.5-1.84 1.22l-3.02 7.05c-.09.23-.14.47-.14.73v2c0 1.1.9 2 2 2h6.31l-.95 4.57-.03.32c0 .41.17.79.44 1.06L9.83 23l6.59-6.59c.36-.36.58-.86.58-1.41V5c0-1.1-.9-2-2-2zm4 0v12h4V3h-4z" /></svg>
+                onclick="
+                  vote(this.closest('.proxy-card').dataset.proxyId, 'dislike')
+                "
+              >
+                <svg class="icon" viewBox="0 0 24 24">
+                  <path
+                    d="M15 3H6c-.83 0-1.54.5-1.84 1.22l-3.02 7.05c-.09.23-.14.47-.14.73v2c0 1.1.9 2 2 2h6.31l-.95 4.57-.03.32c0 .41.17.79.44 1.06L9.83 23l6.59-6.59c.36-.36.58-.86.58-1.41V5c0-1.1-.9-2-2-2zm4 0v12h4V3h-4z"
+                  />
+                </svg>
                 <span class="count">{{ proxy.dislikes }}</span>
               </button>
               <button
                 class="pin-button {% if proxy.pinned %}pinned{% endif %}"
-                onclick="togglePin({{ proxy.id }}, {{ 'false' if proxy.pinned else 'true' }})"
-                title="{% if proxy.pinned %}Unpin proxy{% else %}Pin proxy{% endif %}">
-                <svg class="icon" viewBox="0 0 24 24"><path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>
+                data-proxy-id="{{ proxy.id }}"
+                onclick="togglePin(this.dataset.proxyId, !this.classList.contains('pinned'))"
+                title="{% if proxy.pinned %}Unpin proxy{% else %}Pin proxy{% endif %}"
+              >
+                <svg class="icon" viewBox="0 0 24 24">
+                  <path
+                    d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z"
+                  />
+                </svg>
               </button>
             </div>
 
             <div class="link-buttons">
-              {% set telegram_link = 'tg://webproxy?server=' ~ proxy.server ~ '&secret=' ~ proxy.secret if proxy.proxy_type.value == 'web' else 'tg://proxy?server=' ~ proxy.server ~ '&port=' ~ proxy.port ~ '&secret=' ~ proxy.secret %}
+              {% set telegram_link = 'tg://webproxy?server=' ~ proxy.server ~
+              '&secret=' ~ proxy.secret if proxy.proxy_type.value == 'web' else
+              'tg://proxy?server=' ~ proxy.server ~ '&port=' ~ proxy.port ~
+              '&secret=' ~ proxy.secret %}
               <a
                 href="{{ telegram_link }}"
                 data-link="{{ telegram_link }}"
                 onclick="openTelegramLink(this.dataset.link, event)"
-                class="link-btn">
-                <svg class="icon" viewBox="0 0 24 24"><path
-                    d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z" /></svg>
+                class="link-btn"
+              >
+                <svg class="icon" viewBox="0 0 24 24">
+                  <path
+                    d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"
+                  />
+                </svg>
                 Open
               </a>
               <button
                 class="link-btn"
                 data-link="{{ telegram_link }}"
-                onclick="copyLink(this.dataset.link, this)">
-                <svg class="icon" viewBox="0 0 24 24"><path
-                    d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" /></svg>
+                onclick="copyLink(this.dataset.link, this)"
+              >
+                <svg class="icon" viewBox="0 0 24 24">
+                  <path
+                    d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"
+                  />
+                </svg>
                 Copy
               </button>
               <button
                 class="link-btn"
-                onclick="showQRCode('{{ proxy.server }}', '{{ proxy.port }}', '{{ proxy.secret }}', '{{ proxy.proxy_type.value }}')">
-                <svg class="icon" viewBox="0 0 24 24"><path d="M3 11h8V3H3v8zm2-6h4v4H5V5zm8-2v8h8V3h-8zm6 6h-4V5h4v4zM3 21h8v-8H3v8zm2-6h4v4H5v-4zm8-2v8h8v-8h-8zm6 6h-4v-4h4v4z"/></svg>
+                onclick="showQRCode('{{ proxy.server }}', '{{ proxy.port }}', '{{ proxy.secret }}', '{{ proxy.proxy_type.value }}')"
+              >
+                <svg class="icon" viewBox="0 0 24 24">
+                  <path
+                    d="M3 11h8V3H3v8zm2-6h4v4H5V5zm8-2v8h8V3h-8zm6 6h-4V5h4v4zM3 21h8v-8H3v8zm2-6h4v4H5v-4zm8-2v8h8v-8h-8zm6 6h-4v-4h4v4z"
+                  />
+                </svg>
                 QR
               </button>
             </div>
@@ -214,9 +371,12 @@
       {% else %}
       <div class="empty-state">
         <div class="empty-state-icon">
-          <svg viewBox="0 0 24 24" width="64" height="64"><path
+          <svg viewBox="0 0 24 24" width="64" height="64">
+            <path
               fill="currentColor"
-              d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" /></svg>
+              d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"
+            />
+          </svg>
         </div>
         <h2 class="empty-state-title">No proxies yet</h2>
         <p class="empty-state-text">Be the first to add a proxy!</p>
@@ -231,12 +391,20 @@
 
         <!-- Tab buttons -->
         <div class="dialog-tabs">
-          <button type="button" class="dialog-tab form-tab active"
-            data-tab="links-tab" onclick="switchTab('links-tab')">
+          <button
+            type="button"
+            class="dialog-tab form-tab active"
+            data-tab="links-tab"
+            onclick="switchTab('links-tab')"
+          >
             Paste Links
           </button>
-          <button type="button" class="dialog-tab form-tab"
-            data-tab="manual-tab" onclick="switchTab('manual-tab')">
+          <button
+            type="button"
+            class="dialog-tab form-tab"
+            data-tab="manual-tab"
+            onclick="switchTab('manual-tab')"
+          >
             Manual Entry
           </button>
         </div>
@@ -249,7 +417,8 @@
               <textarea
                 id="proxy-links"
                 placeholder="Paste tg://proxy or t.me/proxy links here..."
-                rows="6"></textarea>
+                rows="6"
+              ></textarea>
             </div>
             <p class="form-helper">
               Supports bulk import: paste multiple links at once, even from
@@ -273,35 +442,67 @@
             <div class="form-field">
               <div class="text-field">
                 <label>Server</label>
-                <input type="text" id="proxy-server"
-                  placeholder="proxy.example.com">
+                <input
+                  type="text"
+                  id="proxy-server"
+                  placeholder="proxy.example.com"
+                />
               </div>
             </div>
             <div class="form-field port-field">
               <div class="text-field">
                 <label>Port</label>
-                <input type="number" id="proxy-port" placeholder="443" min="1"
-                  max="65535">
+                <input
+                  type="number"
+                  id="proxy-port"
+                  placeholder="443"
+                  min="1"
+                  max="65535"
+                />
               </div>
             </div>
           </div>
-          <div class="form-field full" style="margin-top: 12px;">
+          <div class="form-field full" style="margin-top: 12px">
             <div class="text-field">
               <label>Secret</label>
-              <input type="text" id="proxy-secret"
-                placeholder="ee0123456789abcdef...">
+              <input
+                type="text"
+                id="proxy-secret"
+                placeholder="ee0123456789abcdef..."
+              />
             </div>
             <p class="form-helper">
               32+ character hex string (with optional "ee" prefix for fake-tls)
             </p>
           </div>
+          <div class="form-field full note-field">
+            <div class="text-field">
+              <label for="proxy-note">Note (optional)</label>
+              <input
+                type="text"
+                id="proxy-note"
+                maxlength="200"
+                placeholder="Provider, location, whitelist..."
+              />
+            </div>
+          </div>
         </div>
 
         <div class="dialog-actions">
-          <button type="button" class="btn btn-text"
-            onclick="closeDialog('add-dialog')">Cancel</button>
-          <button type="button" class="btn btn-filled"
-            onclick="submitAddProxy()">Add</button>
+          <button
+            type="button"
+            class="btn btn-text"
+            onclick="closeDialog('add-dialog')"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            class="btn btn-filled"
+            onclick="submitAddProxy()"
+          >
+            Add
+          </button>
         </div>
       </div>
     </div>
@@ -312,18 +513,23 @@
         <h2 class="dialog-title">Proxy QR Code</h2>
         <div class="qr-content">
           <div id="qr-code-container"></div>
-          <p class="qr-hint">Scan this QR code with Telegram to connect to the
-            proxy</p>
+          <p class="qr-hint">
+            Scan this QR code with Telegram to connect to the proxy
+          </p>
         </div>
         <div class="dialog-actions">
-          <button type="button" class="btn btn-filled"
-            onclick="closeDialog('qr-dialog')">Close</button>
+          <button
+            type="button"
+            class="btn btn-filled"
+            onclick="closeDialog('qr-dialog')"
+          >
+            Close
+          </button>
         </div>
       </div>
     </div>
 
-    <script
-      src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
     <script src="./static/app.js?v={{ static_version }}"></script>
   </body>
 </html>

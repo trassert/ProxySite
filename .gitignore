@@ -38,6 +38,8 @@ Thumbs.db
 build/
 dist/
 *.egg-info/
+node_modules/
+*.tsbuildinfo
 
 pnpm-lock.yaml
 yarn.lock

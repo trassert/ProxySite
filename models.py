@@ -40,6 +40,15 @@ class ProxyBase(BaseModel):
     port: int = Field(..., ge=1, le=65535)
     secret: str = Field(..., min_length=32, max_length=512)
     proxy_type: ProxyType = ProxyType.MT_PROTO
+    note: str | None = Field(default=None, max_length=200)
+
+    @field_validator("note", mode="before")
+    @classmethod
+    def normalize_note(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        value = str(v).strip()
+        return value or None
 
     @field_validator("server")
     @classmethod
@@ -61,7 +70,9 @@ class ProxyBase(BaseModel):
         v = v.strip().lower()
 
         if not re.match(r"^[a-f0-9]{32,512}$", v) or len(v) % 2 != 0:
-            msg = "Secret must be an even number of hex characters (32+ digits)."
+            msg = (
+                "Secret must be an even number of hex characters (32+ digits)."
+            )
             raise ValueError(msg)
         return v
 
@@ -138,6 +149,21 @@ class PinRequest(BaseModel):
 
     password: str = Field(..., min_length=1)
     pinned: bool
+
+
+class NoteUpdate(BaseModel):
+    """Request for updating a proxy note."""
+
+    password: str = Field(..., min_length=1)
+    note: str | None = Field(default=None, max_length=200)
+
+    @field_validator("note", mode="before")
+    @classmethod
+    def normalize_note(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        value = str(v).strip()
+        return value or None
 
 
 class VoteResponse(BaseModel):

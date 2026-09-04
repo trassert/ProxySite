@@ -12,6 +12,7 @@ Community-driven Telegram proxy aggregator with real-time ping monitoring, votin
   - Removes proxies that have been down for 5+ days
 - **QR Code Support**: Generate QR codes for quick Telegram proxy connection
 - **Bulk Import**: Parse and add multiple proxies from text
+- **Proxy Notes**: Add an optional 200-character label to manual proxies and edit it later
 - **Responsive Design**: Material Design 3 UI with dark/light theme support
 - **Useful logging**: System logs use `logs/YYYY-MM-DD-system.log`; HTTP access logs use `logs/YYYY-MM-DD-access.log`. Secrets and full proxy links are excluded from log messages.
 
@@ -71,7 +72,7 @@ Get list of proxies
 
 ### POST `/api/proxies`
 Add a single proxy
-- Body: `{ "server": "...", "port": ..., "secret": "..." }`
+- Body: `{ "server": "...", "port": ..., "secret": "...", "note": "optional label" }`
 
 ### POST `/api/proxies/parse`
 Parse proxy links from text
@@ -94,6 +95,10 @@ Get aggregate statistics
 ### POST `/api/ping/{proxy_id}`
 Manually trigger ping check for a proxy
 
+### PATCH `/api/proxies/{proxy_id}/note`
+Update or clear a proxy note. Requires the configured app password.
+- Body: `{ "password": "...", "note": "provider or location" }`
+
 ### POST `/api/add-proxy`
 Add proxy via API (supports both single and bulk)
 - Body: `{ "server": "...", "port": ..., "secret": "..." }` or `{ "links": "..." }`
@@ -105,6 +110,7 @@ Add proxy via API (supports both single and bulk)
 - `server`: Hostname or IP
 - `port`: Port number
 - `secret`: Hex secret (32-512 chars)
+- `note`: Optional label, up to 200 characters
 - `likes`: Vote count
 - `dislikes`: Vote count
 - `ping_ms`: Last ping in milliseconds
@@ -163,6 +169,7 @@ When `telegram.enabled` is `true`, the app will start a Telethon client at start
 
 - Only authorized channels listed in `config.toml` are processed.
 - New message text is parsed for `tg://proxy` and `https://t.me/proxy` links.
+- Default channels include `telemtrs`, `telemt_free_proxy`, and `telemtfreeproxy`; configured channels are added to that list.
 - Valid proxies are added automatically to the database.
 
 ### Notes

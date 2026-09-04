@@ -63,6 +63,7 @@ class Database:
                 port INTEGER NOT NULL,
                 secret TEXT NOT NULL,
                 proxy_type TEXT DEFAULT 'mtproto',
+                note TEXT,
                 likes INTEGER DEFAULT 0,
                 dislikes INTEGER DEFAULT 0,
                 ping_ms INTEGER,
@@ -111,6 +112,11 @@ class Database:
         if "proxy_type" not in cols:
             await self._connection.execute(
                 "ALTER TABLE proxies ADD COLUMN proxy_type TEXT DEFAULT 'mtproto'"
+            )
+            await self._connection.commit()
+        if "note" not in cols:
+            await self._connection.execute(
+                "ALTER TABLE proxies ADD COLUMN note TEXT"
             )
             await self._connection.commit()
         if "tcp_ping_ms" not in cols:
@@ -167,6 +173,7 @@ class Database:
             port=row["port"],
             secret=row["secret"],
             proxy_type=ProxyType(row["proxy_type"] or ProxyType.MT_PROTO),
+            note=row["note"],
             likes=row["likes"],
             dislikes=row["dislikes"],
             ping_ms=row["ping_ms"],
@@ -247,10 +254,17 @@ class Database:
         try:
             cursor = await self._connection.execute(
                 """
-                INSERT INTO proxies (server, port, secret, proxy_type, created_at)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT INTO proxies (server, port, secret, proxy_type, note, created_at)
+                VALUES (?, ?, ?, ?, ?, ?)
                 """,
-                (proxy.server, proxy.port, proxy.secret, proxy.proxy_type, now),
+                (
+                    proxy.server,
+                    proxy.port,
+                    proxy.secret,
+                    proxy.proxy_type,
+                    proxy.note,
+                    now,
+                ),
             )
             await self._connection.commit()
             proxy_id = cursor.lastrowid
@@ -281,6 +295,17 @@ class Database:
         await self._connection.execute(
             "UPDATE proxies SET pinned = ? WHERE id = ?",
             (int(pinned), proxy_id),
+        )
+        await self._connection.commit()
+
+    async def update_proxy_note(self, proxy_id: int, note: str | None) -> None:
+        """Update or clear a proxy note."""
+        if not self._connection:
+            msg = "Database not connected"
+            raise RuntimeError(msg)
+        await self._connection.execute(
+            "UPDATE proxies SET note = ? WHERE id = ?",
+            (note, proxy_id),
         )
         await self._connection.commit()
 
@@ -464,7 +489,9 @@ class Database:
         if deleted_count > 0:
             await self._connection.commit()
             now = datetime.utcnow().isoformat()
-            await self._connection.execute("UPDATE stats SET last_cleanup = ?", (now,))
+            await self._connection.execute(
+                "UPDATE stats SET last_cleanup = ?", (now,)
+            )
             await self._connection.commit()
         return deleted_count
 
@@ -491,7 +518,9 @@ class Database:
             "total_proxies": row["total"] or 0,
             "total_likes": row["total_likes"] or 0,
             "total_dislikes": row["total_dislikes"] or 0,
-            "avg_ping_ms": round(row["avg_ping"], 1) if row["avg_ping"] else None,
+            "avg_ping_ms": round(row["avg_ping"], 1)
+            if row["avg_ping"]
+            else None,
             "online_count": row["online"] or 0,
             "last_cleanup": datetime.fromisoformat(stats_row["last_cleanup"])
             if stats_row and stats_row["last_cleanup"]

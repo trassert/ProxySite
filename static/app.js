@@ -4,15 +4,25 @@
  */
 
 const PING_ICON_PATHS = {
-  ok: 'M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z',
-  warning: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z',
-  fallback: 'M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z',
-  pending: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z'
+  ok: "M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z",
+  warning:
+    "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z",
+  fallback: "M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z",
+  pending:
+    "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z",
 };
 
 function pingIcon(status, isFallback = false) {
-  const path = PING_ICON_PATHS[isFallback ? 'fallback' : status] || PING_ICON_PATHS.pending;
+  const path =
+    PING_ICON_PATHS[isFallback ? "fallback" : status] ||
+    PING_ICON_PATHS.pending;
   return `<svg class="icon" viewBox="0 0 24 24" width="16" height="16"><path d="${path}"/></svg>`;
+}
+
+function escapeHtml(value) {
+  const div = document.createElement("div");
+  div.textContent = value;
+  return div.innerHTML;
 }
 
 // ============================================
@@ -21,14 +31,14 @@ function pingIcon(status, isFallback = false) {
 
 function toggleTheme() {
   const html = document.documentElement;
-  const isDark = html.classList.contains('dark');
+  const isDark = html.classList.contains("dark");
 
   if (isDark) {
-    html.classList.remove('dark');
-    localStorage.setItem('theme', 'light');
+    html.classList.remove("dark");
+    localStorage.setItem("theme", "light");
   } else {
-    html.classList.add('dark');
-    localStorage.setItem('theme', 'dark');
+    html.classList.add("dark");
+    localStorage.setItem("theme", "dark");
   }
 }
 
@@ -45,18 +55,18 @@ function showSnackbar(message, duration = 3000) {
 
   snackbarActive = true;
   const item = snackbarQueue.shift();
-  const snackbar = document.createElement('div');
-  snackbar.className = 'snackbar';
+  const snackbar = document.createElement("div");
+  snackbar.className = "snackbar";
   snackbar.textContent = item.message;
   document.body.appendChild(snackbar);
 
   // Trigger animation
   requestAnimationFrame(() => {
-    snackbar.classList.add('show');
+    snackbar.classList.add("show");
   });
 
   setTimeout(() => {
-    snackbar.classList.remove('show');
+    snackbar.classList.remove("show");
     setTimeout(() => {
       snackbar.remove();
       snackbarActive = false;
@@ -73,16 +83,18 @@ function showSnackbar(message, duration = 3000) {
 // ============================================
 
 async function vote(proxyId, voteType) {
-  const btn = document.querySelector(`[data-proxy-id="${proxyId}"][data-vote="${voteType}"]`);
+  const btn = document.querySelector(
+    `[data-proxy-id="${proxyId}"][data-vote="${voteType}"]`,
+  );
   if (!btn) return;
 
-  btn.classList.add('loading');
+  btn.classList.add("loading");
 
   try {
-    const response = await fetch('./api/vote', {
-      method: 'POST',
+    const response = await fetch("./api/vote", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
         proxy_id: proxyId,
@@ -94,40 +106,46 @@ async function vote(proxyId, voteType) {
 
     if (response.ok) {
       // Update counts
-      const card = btn.closest('.proxy-card');
+      const card = btn.closest(".proxy-card");
       const likeBtn = card.querySelector('[data-vote="like"]');
       const dislikeBtn = card.querySelector('[data-vote="dislike"]');
 
-      likeBtn.querySelector('.count').textContent = data.likes;
-      dislikeBtn.querySelector('.count').textContent = data.dislikes;
+      likeBtn.querySelector(".count").textContent = data.likes;
+      dislikeBtn.querySelector(".count").textContent = data.dislikes;
 
       // Update active state
       if (data.success) {
-        if (voteType === 'like') {
-          likeBtn.classList.add('active');
-          dislikeBtn.classList.remove('active');
+        if (voteType === "like") {
+          likeBtn.classList.add("active");
+          dislikeBtn.classList.remove("active");
         } else {
-          dislikeBtn.classList.add('active');
-          likeBtn.classList.remove('active');
+          dislikeBtn.classList.add("active");
+          likeBtn.classList.remove("active");
         }
-        showSnackbar(voteType === 'like' ? 'Liked!' : 'Disliked!');
+        showSnackbar(voteType === "like" ? "Liked!" : "Disliked!");
 
         // Re-sort by likes immediately when liked - move card to new position
-        const currentSort = new URLSearchParams(window.location.search).get('sort') || 'likes';
-        if (currentSort === 'likes' && voteType === 'like' && data.position !== null && data.position >= 0) {
+        const currentSort =
+          new URLSearchParams(window.location.search).get("sort") || "likes";
+        if (
+          currentSort === "likes" &&
+          voteType === "like" &&
+          data.position !== null &&
+          data.position >= 0
+        ) {
           await moveProxyCardToPosition(proxyId, data.position);
         }
       } else {
-        showSnackbar(data.message || 'Already voted');
+        showSnackbar(data.message || "Already voted");
       }
     } else {
-      showSnackbar('Error: ' + (data.detail || 'Unknown error'));
+      showSnackbar("Error: " + (data.detail || "Unknown error"));
     }
   } catch (error) {
-    console.error('Vote error:', error);
-    showSnackbar('Network error');
+    console.error("Vote error:", error);
+    showSnackbar("Network error");
   } finally {
-    btn.classList.remove('loading');
+    btn.classList.remove("loading");
   }
 }
 
@@ -138,26 +156,26 @@ async function vote(proxyId, voteType) {
 async function copyLink(link, element) {
   try {
     await navigator.clipboard.writeText(link);
-    element.classList.add('copy-success');
-    setTimeout(() => element.classList.remove('copy-success'), 300);
-    showSnackbar('Link copied!');
+    element.classList.add("copy-success");
+    setTimeout(() => element.classList.remove("copy-success"), 300);
+    showSnackbar("Link copied!");
   } catch (error) {
     // Fallback for browsers without the Clipboard API
-    const textarea = document.createElement('textarea');
+    const textarea = document.createElement("textarea");
     textarea.value = link;
-    textarea.style.position = 'fixed';
-    textarea.style.left = '-9999px';
+    textarea.style.position = "fixed";
+    textarea.style.left = "-9999px";
     document.body.appendChild(textarea);
     textarea.focus();
     textarea.select();
-    const copied = document.execCommand('copy');
+    const copied = document.execCommand("copy");
     document.body.removeChild(textarea);
     if (copied) {
-      element.classList.add('copy-success');
-      setTimeout(() => element.classList.remove('copy-success'), 300);
-      showSnackbar('Link copied!');
+      element.classList.add("copy-success");
+      setTimeout(() => element.classList.remove("copy-success"), 300);
+      showSnackbar("Link copied!");
     } else {
-      showSnackbar('Could not copy link');
+      showSnackbar("Could not copy link");
     }
   }
 }
@@ -173,7 +191,7 @@ function openTelegramLink(link, event) {
 
 function sortBy(sort) {
   const url = new URL(window.location);
-  url.searchParams.set('sort', sort);
+  url.searchParams.set("sort", sort);
   window.location.href = url.toString();
 }
 
@@ -184,34 +202,34 @@ function sortBy(sort) {
 function openDialog(dialogId) {
   const backdrop = document.getElementById(dialogId);
   if (backdrop) {
-    backdrop.classList.add('open');
-    document.body.style.overflow = 'hidden';
+    backdrop.classList.add("open");
+    document.body.style.overflow = "hidden";
   }
 }
 
 function closeDialog(dialogId) {
   const backdrop = document.getElementById(dialogId);
   if (backdrop) {
-    backdrop.classList.remove('open');
-    document.body.style.overflow = '';
+    backdrop.classList.remove("open");
+    document.body.style.overflow = "";
   }
 }
 
 // Close on backdrop click
-document.addEventListener('click', (e) => {
-  if (e.target.classList.contains('dialog-backdrop')) {
-    e.target.classList.remove('open');
-    document.body.style.overflow = '';
+document.addEventListener("click", (e) => {
+  if (e.target.classList.contains("dialog-backdrop")) {
+    e.target.classList.remove("open");
+    document.body.style.overflow = "";
   }
 });
 
 // Close on escape
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') {
-    const openBackdrop = document.querySelector('.dialog-backdrop.open');
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    const openBackdrop = document.querySelector(".dialog-backdrop.open");
     if (openBackdrop) {
-      openBackdrop.classList.remove('open');
-      document.body.style.overflow = '';
+      openBackdrop.classList.remove("open");
+      document.body.style.overflow = "";
     }
   }
 });
@@ -222,31 +240,31 @@ document.addEventListener('keydown', (e) => {
 
 function switchTab(tabId) {
   // Update active tab button
-  const tabs = document.querySelectorAll('.form-tab');
-  tabs.forEach(tab => {
+  const tabs = document.querySelectorAll(".form-tab");
+  tabs.forEach((tab) => {
     const isActive = tab.dataset.tab === tabId;
-    tab.classList.toggle('active', isActive);
+    tab.classList.toggle("active", isActive);
   });
 
   // Show/hide panels - explicitly set display
-  const panels = document.querySelectorAll('.form-panel');
-  panels.forEach(panel => {
+  const panels = document.querySelectorAll(".form-panel");
+  panels.forEach((panel) => {
     if (panel.id === tabId) {
-      panel.classList.remove('hidden');
-      panel.style.display = 'block';
+      panel.classList.remove("hidden");
+      panel.style.display = "block";
     } else {
-      panel.classList.add('hidden');
-      panel.style.display = 'none';
+      panel.classList.add("hidden");
+      panel.style.display = "none";
     }
   });
 }
 
 function toggleProxyType() {
-  const type = document.getElementById('proxy-type')?.value;
-  const port = document.getElementById('proxy-port');
+  const type = document.getElementById("proxy-type")?.value;
+  const port = document.getElementById("proxy-port");
   if (!port) return;
-  port.value = type === 'web' ? '443' : '';
-  port.disabled = type === 'web';
+  port.value = type === "web" ? "443" : "";
+  port.disabled = type === "web";
 }
 
 // ============================================
@@ -254,7 +272,7 @@ function toggleProxyType() {
 // ============================================
 
 async function loadUserVotes() {
-  const cards = document.querySelectorAll('.proxy-card');
+  const cards = document.querySelectorAll(".proxy-card");
 
   for (const card of cards) {
     const proxyId = card.dataset.proxyId;
@@ -267,7 +285,7 @@ async function loadUserVotes() {
       if (data.vote) {
         const btn = card.querySelector(`[data-vote="${data.vote}"]`);
         if (btn) {
-          btn.classList.add('active');
+          btn.classList.add("active");
         }
       }
     } catch (error) {
@@ -277,7 +295,7 @@ async function loadUserVotes() {
 }
 
 // Load votes when page loads
-document.addEventListener('DOMContentLoaded', loadUserVotes);
+document.addEventListener("DOMContentLoaded", loadUserVotes);
 
 // ============================================
 // Trigger ping check
@@ -291,14 +309,15 @@ async function submitAddProxy() {
   const tabId = getActiveTab();
   const data = {};
 
-  if (tabId === 'manual-tab') {
-    const server = document.getElementById('proxy-server')?.value?.trim();
-    const port = document.getElementById('proxy-port')?.value?.trim();
-    const secret = document.getElementById('proxy-secret')?.value?.trim();
-    const proxyType = document.getElementById('proxy-type')?.value || 'mtproto';
+  if (tabId === "manual-tab") {
+    const server = document.getElementById("proxy-server")?.value?.trim();
+    const port = document.getElementById("proxy-port")?.value?.trim();
+    const secret = document.getElementById("proxy-secret")?.value?.trim();
+    const note = document.getElementById("proxy-note")?.value?.trim();
+    const proxyType = document.getElementById("proxy-type")?.value || "mtproto";
 
     if (!server || !port || !secret) {
-      showSnackbar('Please fill all fields');
+      showSnackbar("Please fill all fields");
       return;
     }
 
@@ -306,50 +325,53 @@ async function submitAddProxy() {
     data.port = parseInt(port);
     data.secret = secret;
     data.proxy_type = proxyType;
-  } else if (tabId === 'links-tab') {
-    const links = document.getElementById('proxy-links')?.value?.trim();
+    if (note) data.note = note;
+  } else if (tabId === "links-tab") {
+    const links = document.getElementById("proxy-links")?.value?.trim();
     if (!links) {
-      showSnackbar('Please paste at least one proxy link');
+      showSnackbar("Please paste at least one proxy link");
       return;
     }
     data.links = links;
   } else {
-    showSnackbar('Please select a tab');
+    showSnackbar("Please select a tab");
     return;
   }
 
   const btn = document.querySelector('button[onclick*="submitAddProxy"]');
-  if (btn) btn.classList.add('loading');
+  if (btn) btn.classList.add("loading");
 
   try {
-    const response = await fetch('./api/add-proxy', {
-      method: 'POST',
+    const response = await fetch("./api/add-proxy", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(data),
     });
 
-    if (tabId === 'links-tab') {
+    if (tabId === "links-tab") {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
-      let buffer = '';
+      let buffer = "";
       let added = 0;
 
       const processEvent = (event) => {
-        const line = event.split('\n').find((value) => value.startsWith('data: '));
+        const line = event
+          .split("\n")
+          .find((value) => value.startsWith("data: "));
         if (!line) return;
         const item = JSON.parse(line.slice(6));
-        if (item.type === 'result') {
-          if (item.status === 'added') {
+        if (item.type === "result") {
+          if (item.status === "added") {
             added += 1;
             showSnackbar(`${item.address} added!`);
-          } else if (item.status === 'failed_checks') {
+          } else if (item.status === "failed_checks") {
             showSnackbar(`${item.address} failed checks.`);
           } else {
             showSnackbar(`${item.address} already exists.`);
           }
-        } else if (item.type === 'error') {
+        } else if (item.type === "error") {
           showSnackbar(item.message);
         }
       };
@@ -357,7 +379,7 @@ async function submitAddProxy() {
       while (true) {
         const { value, done } = await reader.read();
         buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
-        const events = buffer.split('\n\n');
+        const events = buffer.split("\n\n");
         buffer = events.pop();
         events.forEach(processEvent);
         if (done) break;
@@ -372,9 +394,9 @@ async function submitAddProxy() {
     if (result.results?.length > 0) {
       result.results.forEach((item, index) => {
         setTimeout(() => {
-          if (item.status === 'added') {
+          if (item.status === "added") {
             showSnackbar(`${item.address} added!`);
-          } else if (item.status === 'failed_checks') {
+          } else if (item.status === "failed_checks") {
             showSnackbar(`${item.address} failed checks.`);
           } else {
             showSnackbar(`${item.address} already exists.`);
@@ -387,14 +409,16 @@ async function submitAddProxy() {
 
     if (result.added > 0) {
       // Clear form - use value property not attribute
-      const serverInput = document.getElementById('proxy-server');
-      const portInput = document.getElementById('proxy-port');
-      const secretInput = document.getElementById('proxy-secret');
-      const linksInput = document.getElementById('proxy-links');
-      if (serverInput) serverInput.value = '';
-      if (portInput) portInput.value = '';
-      if (secretInput) secretInput.value = '';
-      if (linksInput) linksInput.value = '';
+      const serverInput = document.getElementById("proxy-server");
+      const portInput = document.getElementById("proxy-port");
+      const secretInput = document.getElementById("proxy-secret");
+      const noteInput = document.getElementById("proxy-note");
+      const linksInput = document.getElementById("proxy-links");
+      if (serverInput) serverInput.value = "";
+      if (portInput) portInput.value = "";
+      if (secretInput) secretInput.value = "";
+      if (noteInput) noteInput.value = "";
+      if (linksInput) linksInput.value = "";
       // Reload list
       setTimeout(() => location.reload(), 500);
     } else if (result.duplicates > 0 && !result.results?.length) {
@@ -402,29 +426,64 @@ async function submitAddProxy() {
     }
 
     if (result.errors?.length > 0) {
-      showSnackbar(`Errors: ${result.errors.join(', ')}`);
+      showSnackbar(`Errors: ${result.errors.join(", ")}`);
     }
   } catch (error) {
-    console.error('Submit error:', error);
-    showSnackbar('Network error');
+    console.error("Submit error:", error);
+    showSnackbar("Network error");
   } finally {
-    if (btn) btn.classList.remove('loading');
+    if (btn) btn.classList.remove("loading");
   }
 }
 
 function getActiveTab() {
-  const activeTab = document.querySelector('.form-tab.active');
-  return activeTab?.dataset?.tab || 'manual-tab';
+  const activeTab = document.querySelector(".form-tab.active");
+  return activeTab?.dataset?.tab || "manual-tab";
+}
+
+async function editProxyNote(proxyId) {
+  const card = document.querySelector(`[data-proxy-id="${proxyId}"]`);
+  const currentNote = card?.querySelector(".proxy-note span")?.textContent || "";
+  const note = prompt("Proxy note (leave empty to clear)", currentNote);
+  if (note === null) return;
+
+  const password = prompt("Enter admin password");
+  if (password === null) return;
+
+  try {
+    const response = await fetch(`./api/proxies/${proxyId}/note`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password, note: note.trim() || null }),
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      showSnackbar("Note update failed: " + (data.detail || "Invalid password"));
+      return;
+    }
+
+    const titleGroup = card?.querySelector(".proxy-title-group");
+    if (!titleGroup) return;
+    titleGroup.querySelector(".proxy-note, .note-add-button")?.remove();
+    const noteMarkup = data.note
+      ? `<div class="proxy-note"><span>${escapeHtml(data.note)}</span><button class="note-edit-button" type="button" onclick="editProxyNote(${proxyId})" title="Edit note" aria-label="Edit note">✎</button></div>`
+      : `<button class="note-edit-button note-add-button" type="button" onclick="editProxyNote(${proxyId})" title="Add note" aria-label="Add note">✎</button>`;
+    titleGroup.insertAdjacentHTML("beforeend", noteMarkup);
+    showSnackbar(data.note ? "Note updated" : "Note cleared");
+  } catch (error) {
+    console.error("Note update error:", error);
+    showSnackbar("Network error");
+  }
 }
 
 async function checkPing(proxyId) {
   const card = document.querySelector(`[data-proxy-id="${proxyId}"]`);
   if (!card) return;
 
-  const badge = card.querySelector('.ping-badge');
+  const badge = card.querySelector(".ping-badge");
   if (!badge) return;
 
-  badge.className = 'ping-badge pending';
+  badge.className = "ping-badge pending";
   badge.innerHTML = `
     <svg class="icon" viewBox="0 0 24 24" width="16" height="16">
       <path d="M12,4V2A10,10 0 0,0 2,12H4A8,8 0 0,1 12,4Z">
@@ -435,19 +494,18 @@ async function checkPing(proxyId) {
   `;
 
   try {
-    const response = await fetch(`./api/ping/${proxyId}`, { method: 'POST' });
+    const response = await fetch(`./api/ping/${proxyId}`, { method: "POST" });
     const data = await response.json();
 
     // Determine badge class based on status and fallback
     let badgeClass = data.status;
     if (data.is_fallback) {
-      badgeClass = 'fallback';
+      badgeClass = "fallback";
     }
     badge.className = `ping-badge ${badgeClass}`;
 
-    const statusText = data.status === 'failed'
-      ? 'Down'
-      : `${data.ping_ms || ''}ms`;
+    const statusText =
+      data.status === "failed" ? "Down" : `${data.ping_ms || ""}ms`;
 
     badge.innerHTML = `
       ${pingIcon(data.status, data.is_fallback)}
@@ -458,21 +516,24 @@ async function checkPing(proxyId) {
     await updateStats();
 
     // Smart re-sort: only refresh if position actually changed
-    const currentSort = new URLSearchParams(window.location.search).get('sort') || 'likes';
-    if (currentSort === 'ping') {
+    const currentSort =
+      new URLSearchParams(window.location.search).get("sort") || "likes";
+    if (currentSort === "ping") {
       await updateProxyIfPositionChanged(proxyId);
     } else {
-      showSnackbar(data.is_fallback ? 'TCP fallback OK' : `Ping: ${data.status}`);
+      showSnackbar(
+        data.is_fallback ? "TCP fallback OK" : `Ping: ${data.status}`,
+      );
     }
   } catch (error) {
-    badge.className = 'ping-badge failed';
+    badge.className = "ping-badge failed";
     badge.innerHTML = `
       <svg class="icon" viewBox="0 0 24 24" width="16" height="16">
-        ${pingIcon('failed')}
+        ${pingIcon("failed")}
       </svg>
       Error
     `;
-    showSnackbar('Ping check failed');
+    showSnackbar("Ping check failed");
   }
 }
 
@@ -483,8 +544,9 @@ async function checkPing(proxyId) {
 async function updateProxyIfPositionChanged(proxyId) {
   try {
     // Get current position of proxy in the list
-    const oldPosition = Array.from(document.querySelectorAll('.proxy-card'))
-      .findIndex(card => parseInt(card.dataset.proxyId) === proxyId);
+    const oldPosition = Array.from(
+      document.querySelectorAll(".proxy-card"),
+    ).findIndex((card) => parseInt(card.dataset.proxyId) === proxyId);
 
     if (oldPosition === -1) return;
 
@@ -493,20 +555,20 @@ async function updateProxyIfPositionChanged(proxyId) {
     const data = await response.json();
 
     // Find new position of proxy in the new list
-    const newPosition = data.proxies.findIndex(p => p.id === proxyId);
+    const newPosition = data.proxies.findIndex((p) => p.id === proxyId);
 
     // If position hasn't changed, don't refresh
     if (oldPosition === newPosition) {
-      showSnackbar('Ping updated');
+      showSnackbar("Ping updated");
       return;
     }
 
     // If position changed, refresh list
-    await refreshProxyList('ping');
+    await refreshProxyList("ping");
   } catch (error) {
-    console.error('Failed to check position change:', error);
+    console.error("Failed to check position change:", error);
     // Fallback: refresh anyway
-    await refreshProxyList('ping');
+    await refreshProxyList("ping");
   }
 }
 
@@ -516,45 +578,45 @@ async function updateProxyIfPositionChanged(proxyId) {
 
 async function updateStats() {
   try {
-    const response = await fetch('./api/stats');
+    const response = await fetch("./api/stats");
     const data = await response.json();
 
     // Update stat chips
-    const statChips = document.querySelectorAll('.stat-chip');
-    statChips.forEach(chip => {
-      const valueSpan = chip.querySelector('.value');
+    const statChips = document.querySelectorAll(".stat-chip");
+    statChips.forEach((chip) => {
+      const valueSpan = chip.querySelector(".value");
       if (!valueSpan) return;
 
-      if (chip.textContent.includes('proxies')) {
+      if (chip.textContent.includes("proxies")) {
         valueSpan.textContent = data.total_proxies;
-      } else if (chip.textContent.includes('likes')) {
+      } else if (chip.textContent.includes("likes")) {
         valueSpan.textContent = data.total_likes;
-      } else if (chip.textContent.includes('online')) {
+      } else if (chip.textContent.includes("online")) {
         valueSpan.textContent = data.online_count || 0;
-      } else if (chip.textContent.includes('avg')) {
+      } else if (chip.textContent.includes("avg")) {
         if (data.avg_ping_ms) {
           valueSpan.textContent = `${data.avg_ping_ms}ms`;
         }
       }
     });
   } catch (error) {
-    console.error('Failed to update stats:', error);
+    console.error("Failed to update stats:", error);
   }
 }
 
-async function refreshProxyList(sortBy = 'likes') {
+async function refreshProxyList(sortBy = "likes") {
   try {
     const response = await fetch(`./api/proxies?sort=${sortBy}&limit=100`);
     const data = await response.json();
 
-    const proxyList = document.querySelector('.proxy-list');
+    const proxyList = document.querySelector(".proxy-list");
     if (!proxyList) return;
 
     // Clear current list
-    proxyList.innerHTML = '';
+    proxyList.innerHTML = "";
 
     // Render new proxies
-    data.proxies.forEach(proxy => {
+    data.proxies.forEach((proxy) => {
       const card = createProxyCard(proxy);
       proxyList.appendChild(card);
     });
@@ -562,27 +624,31 @@ async function refreshProxyList(sortBy = 'likes') {
     // Re-load user votes
     await loadUserVotes();
   } catch (error) {
-    console.error('Failed to refresh proxy list:', error);
+    console.error("Failed to refresh proxy list:", error);
   }
 }
 
 function createProxyCard(proxy) {
-  const card = document.createElement('article');
-  card.className = `proxy-card${proxy.pinned ? ' pinned' : ''}`;
+  const card = document.createElement("article");
+  card.className = `proxy-card${proxy.pinned ? " pinned" : ""}`;
   card.dataset.proxyId = proxy.id;
 
   // Determine badge class based on status and fallback
   let badgeClass = proxy.ping_status;
   if (proxy.is_fallback) {
-    badgeClass = 'fallback';
+    badgeClass = "fallback";
   }
 
-  const isWebProxy = proxy.proxy_type === 'web';
-  const pingText = proxy.ping_status === 'failed'
-    ? 'Down'
-    : proxy.ping_status === 'pending'
-      ? 'Pending'
-      : `${proxy.ping_ms ?? 0}ms`;
+  const isWebProxy = proxy.proxy_type === "web";
+  const noteMarkup = proxy.note
+    ? `<div class="proxy-note"><span>${escapeHtml(proxy.note)}</span><button class="note-edit-button" type="button" onclick="editProxyNote(${proxy.id})" title="Edit note" aria-label="Edit note">✎</button></div>`
+    : `<button class="note-edit-button note-add-button" type="button" onclick="editProxyNote(${proxy.id})" title="Add note" aria-label="Add note">✎</button>`;
+  const pingText =
+    proxy.ping_status === "failed"
+      ? "Down"
+      : proxy.ping_status === "pending"
+        ? "Pending"
+        : `${proxy.ping_ms ?? 0}ms`;
   const pingBadgeContent = `${pingIcon(proxy.ping_status, proxy.is_fallback)} ${pingText}`;
   const telegramLink = isWebProxy
     ? `tg://webproxy?server=${proxy.server}&secret=${proxy.secret}`
@@ -590,8 +656,9 @@ function createProxyCard(proxy) {
 
   card.innerHTML = `
     <div class="proxy-header">
-      <div>
-        <h2 class="proxy-server">${isWebProxy ? '<svg class="web-proxy-icon" viewBox="0 0 24 24" aria-label="Internet" role="img"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm6.92 9h-3.04a15.7 15.7 0 0 0-1.18-5.02A8.03 8.03 0 0 1 18.92 11ZM12 4c.83 1.2 1.55 3.67 1.83 7h-3.66C10.45 7.67 11.17 5.2 12 4ZM9.3 5.98A15.7 15.7 0 0 0 8.12 11H5.08a8.03 8.03 0 0 1 4.22-5.02ZM5.08 13h3.04c.2 1.86.62 3.58 1.18 5.02A8.03 8.03 0 0 1 5.08 13ZM12 20c-.83-1.2-1.55-3.67-1.83-7h3.66c-.28 3.33-1 5.8-1.83 7Zm2.7-1.98A15.7 15.7 0 0 0 15.88 13h3.04a8.03 8.03 0 0 1-4.22 5.02Z" /></svg>' : ''}${proxy.server}<span class="proxy-port">:${proxy.port}</span></h2>
+      <div class="proxy-title-group">
+        <h2 class="proxy-server">${isWebProxy ? '<svg class="web-proxy-icon" viewBox="0 0 24 24" aria-label="Internet" role="img"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm6.92 9h-3.04a15.7 15.7 0 0 0-1.18-5.02A8.03 8.03 0 0 1 18.92 11ZM12 4c.83 1.2 1.55 3.67 1.83 7h-3.66C10.45 7.67 11.17 5.2 12 4ZM9.3 5.98A15.7 15.7 0 0 0 8.12 11H5.08a8.03 8.03 0 0 1 4.22-5.02ZM5.08 13h3.04c.2 1.86.62 3.58 1.18 5.02A8.03 8.03 0 0 1 5.08 13ZM12 20c-.83-1.2-1.55-3.67-1.83-7h3.66c-.28 3.33-1 5.8-1.83 7Zm2.7-1.98A15.7 15.7 0 0 0 15.88 13h3.04a8.03 8.03 0 0 1-4.22 5.02Z" /></svg>' : ""}${proxy.server}<span class="proxy-port">:${proxy.port}</span></h2>
+        ${noteMarkup}
       </div>
       <button class="ping-badge ${badgeClass}" onclick="checkPing(${proxy.id})" title="Click to refresh">
         ${pingBadgeContent}
@@ -620,7 +687,7 @@ function createProxyCard(proxy) {
           <svg class="icon" viewBox="0 0 24 24" width="20" height="20"><path d="M15 3H6c-.83 0-1.54.5-1.84 1.22l-3.02 7.05c-.09.23-.14.47-.14.73v2c0 1.1.9 2 2 2h6.31l-.95 4.57-.03.32c0 .41.17.79.44 1.06L9.83 23l6.59-6.59c.36-.36.58-.86.58-1.41V5c0-1.1-.9-2-2-2zm4 0v12h4V3h-4z"/></svg>
           <span class="count">${proxy.dislikes}</span>
         </button>
-        <button class="pin-button ${proxy.pinned ? 'pinned' : ''}" onclick="togglePin(${proxy.id}, ${proxy.pinned ? 'false' : 'true'})" title="${proxy.pinned ? 'Unpin proxy' : 'Pin proxy'}">
+        <button class="pin-button ${proxy.pinned ? "pinned" : ""}" onclick="togglePin(${proxy.id}, ${proxy.pinned ? "false" : "true"})" title="${proxy.pinned ? "Unpin proxy" : "Pin proxy"}">
           <svg class="icon" viewBox="0 0 24 24" width="20" height="20"><path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>
         </button>
       </div>
@@ -658,7 +725,7 @@ function createProxyCard(proxy) {
 }
 
 function togglePin(proxyId, pinned) {
-  const password = prompt('Enter admin password');
+  const password = prompt("Enter admin password");
   if (password === null) {
     return;
   }
@@ -668,16 +735,16 @@ function togglePin(proxyId, pinned) {
 async function setPin(proxyId, pinned, password) {
   try {
     const response = await fetch(`./api/proxies/${proxyId}/pin`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({ password, pinned }),
     });
 
     if (!response.ok) {
       const data = await response.json();
-      showSnackbar('Pin failed: ' + (data.detail || 'Invalid password'));
+      showSnackbar("Pin failed: " + (data.detail || "Invalid password"));
       return;
     }
 
@@ -685,41 +752,49 @@ async function setPin(proxyId, pinned, password) {
     const card = document.querySelector(`[data-proxy-id="${proxyId}"]`);
     if (!card) return;
 
-    const pinBtn = card.querySelector('.pin-button');
+    const pinBtn = card.querySelector(".pin-button");
     if (pinBtn) {
-      pinBtn.classList.toggle('pinned', data.pinned);
-      pinBtn.title = data.pinned ? 'Unpin proxy' : 'Pin proxy';
-      pinBtn.innerHTML = data.pinned ?
-        `<svg class="icon" viewBox="0 0 24 24" width="20" height="20"><path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>` :
-        `<svg class="icon" viewBox="0 0 24 24" width="20" height="20"><path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>`;
-      pinBtn.setAttribute('onclick', `togglePin(${proxyId}, ${data.pinned ? 'false' : 'true'})`);
+      pinBtn.classList.toggle("pinned", data.pinned);
+      pinBtn.title = data.pinned ? "Unpin proxy" : "Pin proxy";
+      pinBtn.innerHTML = data.pinned
+        ? `<svg class="icon" viewBox="0 0 24 24" width="20" height="20"><path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>`
+        : `<svg class="icon" viewBox="0 0 24 24" width="20" height="20"><path d="M17 3H7c-1.1 0-1.99.9-1.99 2L5 21l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>`;
+      pinBtn.setAttribute(
+        "onclick",
+        `togglePin(${proxyId}, ${data.pinned ? "false" : "true"})`,
+      );
     }
 
-    showSnackbar(data.pinned ? 'Proxy pinned' : 'Proxy unpinned');
+    showSnackbar(data.pinned ? "Proxy pinned" : "Proxy unpinned");
   } catch (error) {
-    console.error('Pin error:', error);
-    showSnackbar('Network error');
+    console.error("Pin error:", error);
+    showSnackbar("Network error");
   }
 }
 
-function showQRCode(server, port, secret, proxyType = 'mtproto') {
-  const qrLink = proxyType === 'web'
-    ? `tg://webproxy?server=${server}&secret=${secret}`
-    : `tg://proxy?server=${server}&port=${port}&secret=${secret}`;
+function showQRCode(server, port, secret, proxyType = "mtproto") {
+  const qrLink =
+    proxyType === "web"
+      ? `tg://webproxy?server=${server}&secret=${secret}`
+      : `tg://proxy?server=${server}&port=${port}&secret=${secret}`;
 
   // Clear previous QR code
-  const container = document.getElementById('qr-code-container');
-  container.innerHTML = '';
+  const container = document.getElementById("qr-code-container");
+  container.innerHTML = "";
 
   // Generate QR code using the library
   const qrcode = new QRCode(container, {
     text: qrLink,
     width: 256,
     height: 256,
-    colorDark: getComputedStyle(document.documentElement).getPropertyValue('--md-sys-color-on-surface').trim(),
-    colorLight: getComputedStyle(document.documentElement).getPropertyValue('--md-sys-color-surface').trim(),
-    correctLevel: QRCode.CorrectLevel.M
+    colorDark: getComputedStyle(document.documentElement)
+      .getPropertyValue("--md-sys-color-on-surface")
+      .trim(),
+    colorLight: getComputedStyle(document.documentElement)
+      .getPropertyValue("--md-sys-color-surface")
+      .trim(),
+    correctLevel: QRCode.CorrectLevel.M,
   });
 
-  openDialog('qr-dialog');
+  openDialog("qr-dialog");
 }
