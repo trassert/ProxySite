@@ -130,9 +130,7 @@ class PingChecker:
         if proxy_get_ok:
             return cls._protocol_success(ping_ms)
 
-        tcp_ok, tcp_ping_ms = await cls._tcp_check(
-            server, port, time_limit=cls.TIMEOUT
-        )
+        tcp_ok, tcp_ping_ms = await cls._tcp_check(server, port, time_limit=cls.TIMEOUT)
         if tcp_ok:
             return cls._fallback_success(tcp_ping_ms)
 
@@ -162,9 +160,7 @@ class PingChecker:
 
         context = b"tdesktop-web-proxy-bridge-v1\n" + server.encode("ascii")
         capability = hmac.new(secret_bytes, context, hashlib.sha256).digest()
-        bridge = (
-            base64.urlsafe_b64encode(capability).rstrip(b"=").decode("ascii")
-        )
+        bridge = base64.urlsafe_b64encode(capability).rstrip(b"=").decode("ascii")
         request = (
             f"GET /?bridge={bridge} HTTP/1.1\r\n"
             f"Host: {server}\r\n"
@@ -181,15 +177,11 @@ class PingChecker:
                 return False, None
             tls = ssl.create_default_context()
             reader, writer = await asyncio.wait_for(
-                asyncio.open_connection(
-                    server, 443, ssl=tls, server_hostname=server
-                ),
+                asyncio.open_connection(server, 443, ssl=tls, server_hostname=server),
                 timeout=remaining,
             )
             writer.write(request)
-            await asyncio.wait_for(
-                writer.drain(), timeout=deadline - loop.time()
-            )
+            await asyncio.wait_for(writer.drain(), timeout=deadline - loop.time())
             header = await asyncio.wait_for(
                 reader.readuntil(b"\r\n\r\n"), timeout=deadline - loop.time()
             )
@@ -233,9 +225,7 @@ class PingChecker:
             if remaining <= 0:
                 break
 
-            ok, ping_ms = await check(
-                server, port, secret, time_limit=remaining
-            )
+            ok, ping_ms = await check(server, port, secret, time_limit=remaining)
             if ok:
                 return True, ping_ms
 
@@ -347,17 +337,15 @@ class PingChecker:
         rnd[cls.DC_IDX_POS : cls.DC_IDX_POS + 4] = struct.pack("<I", dc_idx)
 
         # Extract encryption key and IV (bytes 8-56, reversed)
-        dec_key_and_iv = rnd[
-            cls.SKIP_LEN : cls.SKIP_LEN + cls.KEY_LEN + cls.IV_LEN
-        ][::-1]
+        dec_key_and_iv = rnd[cls.SKIP_LEN : cls.SKIP_LEN + cls.KEY_LEN + cls.IV_LEN][
+            ::-1
+        ]
         dec_key_and_iv[: cls.KEY_LEN]
         dec_key_and_iv[cls.KEY_LEN :]
 
         # For obfuscated handshake, we encrypt the packet itself
         # Use the same key/iv for encryption (reversed back)
-        enc_key_and_iv = rnd[
-            cls.SKIP_LEN : cls.SKIP_LEN + cls.KEY_LEN + cls.IV_LEN
-        ]
+        enc_key_and_iv = rnd[cls.SKIP_LEN : cls.SKIP_LEN + cls.KEY_LEN + cls.IV_LEN]
         enc_key = enc_key_and_iv[: cls.KEY_LEN]
         enc_iv = enc_key_and_iv[cls.KEY_LEN :]
 
@@ -508,12 +496,10 @@ class PingChecker:
             if name:
                 server_name_entry = struct.pack("!BH", 0, len(name)) + name
                 server_name_list = (
-                    struct.pack("!H", len(server_name_entry))
-                    + server_name_entry
+                    struct.pack("!H", len(server_name_entry)) + server_name_entry
                 )
                 extensions += (
-                    struct.pack("!HH", 0x0000, len(server_name_list))
-                    + server_name_list
+                    struct.pack("!HH", 0x0000, len(server_name_list)) + server_name_list
                 )
 
         # Random padding extension (GREASE)
@@ -537,18 +523,11 @@ class PingChecker:
             + extensions
         )
 
-        handshake = (
-            b"\x01" + struct.pack("!I", len(client_hello))[1:] + client_hello
-        )
+        handshake = b"\x01" + struct.pack("!I", len(client_hello))[1:] + client_hello
 
         # TLS record with randomized version
         tls_version = random.choice([b"\x03\x01", b"\x03\x03"])
-        return (
-            b"\x16"
-            + tls_version
-            + struct.pack("!H", len(handshake))
-            + handshake
-        )
+        return b"\x16" + tls_version + struct.pack("!H", len(handshake)) + handshake
 
     @classmethod
     async def _tcp_check(
@@ -598,9 +577,7 @@ class PingChecker:
         # Extract from URL if present
         if "secret=" in value or "://" in value:
             try:
-                parsed = urlparse(
-                    value if "://" in value else f"https://{value}"
-                )
+                parsed = urlparse(value if "://" in value else f"https://{value}")
                 query = parse_qs(parsed.query)
                 if "secret" in query and query["secret"]:
                     value = query["secret"][0]

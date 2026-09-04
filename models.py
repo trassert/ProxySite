@@ -70,9 +70,7 @@ class ProxyBase(BaseModel):
         v = v.strip().lower()
 
         if not re.match(r"^[a-f0-9]{32,512}$", v) or len(v) % 2 != 0:
-            msg = (
-                "Secret must be an even number of hex characters (32+ digits)."
-            )
+            msg = "Secret must be an even number of hex characters (32+ digits)."
             raise ValueError(msg)
         return v
 
