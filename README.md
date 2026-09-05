@@ -1,8 +1,10 @@
-[![Sponsored by luminto](https://img.shields.io/badge/Sponsored%20by-luminto-purple?style=for-the-badge&logo=githubsponsors)](https://t.me/lumintoch)
-![Python](https://img.shields.io/badge/Language-Python-blue?style=for-the-badge&logo=python)
-![Ruff](https://img.shields.io/badge/Used-Ruff-yellow?style=for-the-badge&logo=ruff)
-
 # MTProto Proxy Hub
+
+<p align="center">
+<a href=https://t.me/lumintoch><img src=https://img.shields.io/badge/Sponsored%20by-Luminto-purple?style=for-the-badge&logo=githubsponsors&logoColor=white></a>
+<img src="https://img.shields.io/badge/Python-blue?style=for-the-badge&logo=python&logoColor=white" alt="Badge">
+<img src="https://img.shields.io/badge/Ruff-FFC131?style=for-the-badge&logo=ruff&logoColor=white" alt="Badge">
+</p>
 
 Community-driven Telegram proxy aggregator with real-time ping monitoring, voting system, and automatic cleanup.
 
