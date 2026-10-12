@@ -48,3 +48,6 @@ uv.lock
 data
 
 config.toml
+
+# User config (defaults live in defaults/config.yml and are committed)
+/config.yml

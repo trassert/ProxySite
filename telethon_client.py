@@ -38,7 +38,7 @@ class TelegramProxyListener:
             return
 
         if not config.telegram.api_id or not config.telegram.api_hash:
-            msg = "Telegram api_id/api_hash must be set in config.toml"
+            msg = "Telegram api_id/api_hash must be set in config.yml"
             raise RuntimeError(msg)
 
         cls.client = TelegramClient(

@@ -147,33 +147,37 @@ Supported formats for parsing:
 WEB proxies use port `443` implicitly. Their bridge capability is derived from the hostname and decoded MTProxy secret; `ee` TLS-emulation secrets are not supported by the WEB transport.
 ## Configuration
 
-Configuration is loaded from `config.toml`.
+Configuration is loaded from `config.yml` using [sycm](https://github.com/trassert/sycm). Shipped defaults live in `defaults/config.yml`; on first run `config.yml` is created from them automatically.
 
-Example `config.toml`:
+Example `config.yml`:
 
-```toml
-[app]
-debug = false
+```yaml
+app:
+  debug: false
+  password: ""
 
-[logging]
-level = "INFO"
-file = "logs/{time:YYYY-MM-DD}-system.log"
-rotation = "10 MB"
-retention = "7 days"
+logging:
+  level: INFO
+  file: "logs/{time:YYYY-MM-DD}-system.log"
+  access_file: "logs/{time:YYYY-MM-DD}-access.log"
+  rotation: "10 MB"
+  retention: "7 days"
 
-[telegram]
-enabled = false
-api_id = 123456
-api_hash = "your_api_hash"
-session_name = "proxyhub"
-channels = ["telemtrs", "@your_channel_id"]
+telegram:
+  enabled: false
+  api_id: 123456
+  api_hash: "your_api_hash"
+  session_name: proxyhub
+  channels:
+    - telemtrs
+    - "@your_channel_id"
 ```
 
 ### Telegram proxy ingestion
 
 When `telegram.enabled` is `true`, the app will start a Telethon client at startup and listen for new messages in configured Telegram channels.
 
-- Only authorized channels listed in `config.toml` are processed.
+- Only authorized channels listed in `config.yml` are processed.
 - New message text is parsed for `tg://proxy` and `https://t.me/proxy` links.
 - Default channels include `telemtrs`, `telemt_free_proxy`, and `telemtfreeproxy`; configured channels are added to that list.
 - Valid proxies are added automatically to the database.

@@ -13,6 +13,7 @@ dependencies = [
     "python-multipart>=0.0.32",
     "pydantic-core>=2.41.5",
     "loguru>=0.7.0",
+    "sycm>=0.1.1",
     "telethon>=1.44.0",
 ]
 
