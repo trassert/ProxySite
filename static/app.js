@@ -136,30 +136,27 @@ async function vote(proxyId, voteType) {
       likeBtn.querySelector(".count").textContent = data.likes;
       dislikeBtn.querySelector(".count").textContent = data.dislikes;
 
-      // Update active state
-      if (data.success) {
-        if (voteType === "like") {
-          likeBtn.classList.add("active");
-          dislikeBtn.classList.remove("active");
-        } else {
-          dislikeBtn.classList.add("active");
-          likeBtn.classList.remove("active");
-        }
-        showSnackbar(voteType === "like" ? "Liked!" : "Disliked!");
+      // Reflect the resulting vote state (clicking again removes the vote)
+      likeBtn.classList.toggle("active", data.vote === "like");
+      dislikeBtn.classList.toggle("active", data.vote === "dislike");
 
-        // Re-sort by likes immediately when liked - move card to new position
-        const currentSort =
-          new URLSearchParams(window.location.search).get("sort") || "likes";
-        if (
-          currentSort === "likes" &&
-          voteType === "like" &&
-          data.position !== null &&
-          data.position >= 0
-        ) {
-          await moveProxyCardToPosition(proxyId, data.position);
-        }
+      if (data.vote === "like") {
+        showSnackbar("Liked!");
+      } else if (data.vote === "dislike") {
+        showSnackbar("Disliked!");
       } else {
-        showSnackbar(data.message || "Already voted");
+        showSnackbar("Vote removed");
+      }
+
+      // Re-sort by likes immediately - move card to its new position
+      const currentSort =
+        new URLSearchParams(window.location.search).get("sort") || "likes";
+      if (
+        currentSort === "likes" &&
+        data.position !== null &&
+        data.position >= 0
+      ) {
+        await moveProxyCardToPosition(proxyId, data.position);
       }
     } else {
       showSnackbar("Error: " + (data.detail || "Unknown error"));

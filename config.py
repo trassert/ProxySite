@@ -39,9 +39,9 @@ access_log_path = Path(config.logging.access_file)
 access_log_path.parent.mkdir(parents=True, exist_ok=True)
 logger.add(
     str(access_log_path),
-    level="INFO",
-    rotation="1 day",
-    retention="30 days",
+    level=config.logging.access_level,
+    rotation=config.logging.access_rotation,
+    retention=config.logging.access_retention,
     enqueue=True,
     format="{time:YYYY-MM-DD HH:mm:ss} | {message}",
     filter=lambda record: record["extra"].get("log_type") == "http",

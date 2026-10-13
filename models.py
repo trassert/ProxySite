@@ -10,6 +10,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from config import config
+
 
 class PingStatus(StrEnum):
     """Ping check status."""
@@ -59,7 +61,7 @@ class ProxyBase(BaseModel):
         hostname_pattern = r"^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$"
         ip_pattern = r"^(\d{1,3}\.){3}\d{1,3}$"
         if not (re.match(hostname_pattern, v) or re.match(ip_pattern, v)):
-            msg = "Invalid server hostname or IP"
+            msg = config.messages.invalid_server
             raise ValueError(msg)
         return v
 
@@ -70,7 +72,7 @@ class ProxyBase(BaseModel):
         v = v.strip().lower()
 
         if not re.match(r"^[a-f0-9]{32,512}$", v) or len(v) % 2 != 0:
-            msg = "Secret must be an even number of hex characters (32+ digits)."
+            msg = config.messages.invalid_secret
             raise ValueError(msg)
         return v
 
@@ -78,10 +80,10 @@ class ProxyBase(BaseModel):
     def validate_web_proxy(self) -> "ProxyBase":
         if self.proxy_type == ProxyType.WEB:
             if self.port != 443:
-                msg = "Web proxy port must be 443"
+                msg = config.messages.web_proxy_port
                 raise ValueError(msg)
             if self.secret.startswith("ee"):
-                msg = "Web proxy does not support ee secrets"
+                msg = config.messages.web_proxy_no_ee
                 raise ValueError(msg)
         return self
 
@@ -111,26 +113,7 @@ class ProxyInDB(ProxyBase):
 
 
 class ProxyResponse(ProxyInDB):
-    """Proxy response model with computed fields."""
-
-    @property
-    def score(self) -> int:
-        """Net score (likes - dislikes)."""
-        return self.likes - self.dislikes
-
-    @property
-    def tg_link(self) -> str:
-        """Generate Telegram proxy link."""
-        if self.proxy_type == ProxyType.WEB:
-            return f"tg://webproxy?server={self.server}&secret={self.secret}"
-        return f"tg://proxy?server={self.server}&port={self.port}&secret={self.secret}"
-
-    @property
-    def https_link(self) -> str:
-        """Generate HTTPS proxy link."""
-        if self.proxy_type == ProxyType.WEB:
-            return f"https://t.me/webproxy?server={self.server}&secret={self.secret}"
-        return f"https://t.me/proxy?server={self.server}&port={self.port}&secret={self.secret}"
+    """Proxy response model."""
 
     model_config = {"from_attributes": True}
 
@@ -170,8 +153,8 @@ class VoteResponse(BaseModel):
     success: bool
     likes: int
     dislikes: int
-    message: str = ""
     position: int | None = None
+    vote: str | None = None
 
 
 class ProxyListResponse(BaseModel):

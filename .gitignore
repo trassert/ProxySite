@@ -38,14 +38,11 @@ Thumbs.db
 build/
 dist/
 *.egg-info/
-node_modules/
-*.tsbuildinfo
 
-pnpm-lock.yaml
-yarn.lock
 uv.lock
 .ruff_cache
 data
+.session
 
 config.toml
 

@@ -3,6 +3,7 @@
 import re
 from urllib.parse import parse_qs, urlparse
 
+from config import config
 from models import ProxyBase, ProxyType
 
 
@@ -93,24 +94,6 @@ class ProxyLinkParser:
                     seen.add(key)
                     proxies.append(proxy)
             else:
-                errors.append("Invalid proxy link")
+                errors.append(config.messages.invalid_proxy_link)
 
         return proxies, errors
-
-    @classmethod
-    def generate_link(
-        cls,
-        server: str,
-        port: int,
-        secret: str,
-        format: str = "tg",
-        proxy_type: ProxyType = ProxyType.MT_PROTO,
-    ) -> str:
-        """Generate proxy link in specified format."""
-        if proxy_type == ProxyType.WEB:
-            if format == "https":
-                return f"https://t.me/webproxy?server={server}&secret={secret}"
-            return f"tg://webproxy?server={server}&secret={secret}"
-        if format == "https":
-            return f"https://t.me/proxy?server={server}&port={port}&secret={secret}"
-        return f"tg://proxy?server={server}&port={port}&secret={secret}"

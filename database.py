@@ -5,58 +5,62 @@ Async SQLite with aiosqlite.
 
 from __future__ import annotations
 
+import contextlib
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import aiosqlite
 
+from config import config
 from models import PingStatus, ProxyBase, ProxyInDB, ProxyType, SortBy
-
-DATABASE_PATH = Path("data/proxies.db")
 
 
 class Database:
     """Async SQLite database manager."""
 
-    def __init__(self, db_path: Path = DATABASE_PATH) -> None:
+    def __init__(self, db_path: Path | None = None) -> None:
         self.db_path = db_path
         self._connection: aiosqlite.Connection | None = None
 
+    @property
+    def conn(self) -> aiosqlite.Connection:
+        """Return the active connection, raising if not connected."""
+        if self._connection is None:
+            msg = "Database not connected"
+            raise RuntimeError(msg)
+        return self._connection
+
     async def connect(self) -> None:
         """Initialize database connection and create tables."""
-        self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        self._connection = await aiosqlite.connect(self.db_path)
+        path = self.db_path or Path(config.app.database_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        self._connection = await aiosqlite.connect(path)
         self._connection.row_factory = aiosqlite.Row
         await self._create_tables()
         await self._ensure_schema()
 
     async def close(self) -> None:
         """Close database connection."""
-        if self._connection:
+        if self._connection is not None:
             await self._connection.close()
             self._connection = None
 
     @asynccontextmanager
     async def transaction(self) -> AsyncGenerator[aiosqlite.Connection]:
         """Context manager for transactions."""
-        if not self._connection:
-            msg = "Database not connected"
-            raise RuntimeError(msg)
+        conn = self.conn
         try:
-            yield self._connection
-            await self._connection.commit()
+            yield conn
+            await conn.commit()
         except Exception:
-            await self._connection.rollback()
+            await conn.rollback()
             raise
 
     async def _create_tables(self) -> None:
         """Create database tables if not exist."""
-        if not self._connection:
-            msg = "Database not connected"
-            raise RuntimeError(msg)
-        await self._connection.executescript("""
+        await self.conn.executescript("""
             CREATE TABLE IF NOT EXISTS proxies (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 server TEXT NOT NULL,
@@ -97,71 +101,37 @@ class Database:
             );
             INSERT OR IGNORE INTO stats (id) VALUES (1);
         """)
-        await self._connection.commit()
+        await self.conn.commit()
 
     async def _ensure_schema(self) -> None:
-        """Ensure database schema contains newer columns added in migrations.
-        Specifically adds the `tcp_ping_ms` and `failed_since` columns if missing.
-        Also backfills failed_since for existing failed proxies.
-        """
-        if not self._connection:
-            return
-        cursor = await self._connection.execute("PRAGMA table_info(proxies)")
-        rows = await cursor.fetchall()
-        cols = {row[1] for row in rows}
-        if "proxy_type" not in cols:
-            await self._connection.execute(
-                "ALTER TABLE proxies ADD COLUMN proxy_type TEXT DEFAULT 'mtproto'"
+        """Add columns introduced by newer migrations and backfill failed_since."""
+        conn = self.conn
+        cursor = await conn.execute("PRAGMA table_info(proxies)")
+        cols = {row[1] for row in await cursor.fetchall()}
+
+        migrations = {
+            "proxy_type": "ALTER TABLE proxies ADD COLUMN proxy_type TEXT DEFAULT 'mtproto'",
+            "note": "ALTER TABLE proxies ADD COLUMN note TEXT",
+            "tcp_ping_ms": "ALTER TABLE proxies ADD COLUMN tcp_ping_ms INTEGER",
+            "failed_since": "ALTER TABLE proxies ADD COLUMN failed_since TEXT",
+            "pinned": "ALTER TABLE proxies ADD COLUMN pinned INTEGER DEFAULT 0",
+        }
+        for column, statement in migrations.items():
+            if column not in cols:
+                with contextlib.suppress(Exception):
+                    await conn.execute(statement)
+
+        with contextlib.suppress(Exception):
+            await conn.execute(
+                """
+                UPDATE proxies
+                SET failed_since = last_checked
+                WHERE ping_status = 'failed'
+                  AND failed_since IS NULL
+                  AND last_checked IS NOT NULL
+                """
             )
-            await self._connection.commit()
-        if "note" not in cols:
-            await self._connection.execute("ALTER TABLE proxies ADD COLUMN note TEXT")
-            await self._connection.commit()
-        if "tcp_ping_ms" not in cols:
-            try:
-                await self._connection.execute(
-                    "ALTER TABLE proxies ADD COLUMN tcp_ping_ms INTEGER"
-                )
-                await self._connection.commit()
-            except Exception:
-                pass
-        # Add failed_since column if missing
-        failed_since_added = False
-        if "failed_since" not in cols:
-            try:
-                await self._connection.execute(
-                    "ALTER TABLE proxies ADD COLUMN failed_since TEXT"
-                )
-                await self._connection.commit()
-                failed_since_added = True
-            except Exception:
-                pass
-
-        # Backfill failed_since for existing proxies that are in failed status
-        # This ensures old proxies are properly converted to the new format
-        if "pinned" not in cols:
-            try:
-                await self._connection.execute(
-                    "ALTER TABLE proxies ADD COLUMN pinned INTEGER DEFAULT 0"
-                )
-                await self._connection.commit()
-            except Exception:
-                pass
-
-        if failed_since_added or "failed_since" in cols:
-            try:
-                await self._connection.execute(
-                    """
-                    UPDATE proxies
-                    SET failed_since = last_checked
-                    WHERE ping_status = 'failed'
-                      AND failed_since IS NULL
-                      AND last_checked IS NOT NULL
-                    """
-                )
-                await self._connection.commit()
-            except Exception:
-                pass
+        await conn.commit()
 
     def _row_to_proxy(self, row: aiosqlite.Row) -> ProxyInDB:
         """Convert database row to ProxyInDB model without re-validating stored values."""
@@ -201,13 +171,10 @@ class Database:
         tcp_ping_ms: int | None = None,
     ) -> None:
         """Update proxy ping status."""
-        if not self._connection:
-            msg = "Database not connected"
-            raise RuntimeError(msg)
         now = datetime.utcnow().isoformat()
 
         # Determine failed_since value: set when proxy becomes FAILED, clear when recovers
-        cursor = await self._connection.execute(
+        cursor = await self.conn.execute(
             "SELECT ping_status, failed_since FROM proxies WHERE id = ?",
             (proxy_id,),
         )
@@ -223,7 +190,7 @@ class Database:
         else:
             failed_since_val = None
 
-        await self._connection.execute(
+        await self.conn.execute(
             """
             UPDATE proxies
             SET ping_ms = ?, ping_status = ?, tcp_ok = ?, dns_ok = ?, is_fallback = ?, tcp_ping_ms = ?, last_checked = ?, failed_since = ?
@@ -241,16 +208,13 @@ class Database:
                 proxy_id,
             ),
         )
-        await self._connection.commit()
+        await self.conn.commit()
 
     async def add_proxy(self, proxy: ProxyBase) -> ProxyInDB | None:
         """Add a new proxy. Returns None if duplicate."""
-        if not self._connection:
-            msg = "Database not connected"
-            raise RuntimeError(msg)
         now = datetime.utcnow().isoformat()
         try:
-            cursor = await self._connection.execute(
+            cursor = await self.conn.execute(
                 """
                 INSERT INTO proxies (server, port, secret, proxy_type, note, created_at)
                 VALUES (?, ?, ?, ?, ?, ?)
@@ -264,9 +228,9 @@ class Database:
                     now,
                 ),
             )
-            await self._connection.commit()
+            await self.conn.commit()
             proxy_id = cursor.lastrowid
-            cursor = await self._connection.execute(
+            cursor = await self.conn.execute(
                 "SELECT * FROM proxies WHERE id = ?", (proxy_id,)
             )
             row = await cursor.fetchone()
@@ -276,10 +240,7 @@ class Database:
 
     async def get_proxy(self, proxy_id: int) -> ProxyInDB | None:
         """Get single proxy by ID."""
-        if not self._connection:
-            msg = "Database not connected"
-            raise RuntimeError(msg)
-        cursor = await self._connection.execute(
+        cursor = await self.conn.execute(
             "SELECT * FROM proxies WHERE id = ?", (proxy_id,)
         )
         row = await cursor.fetchone()
@@ -287,36 +248,29 @@ class Database:
 
     async def set_proxy_pinned(self, proxy_id: int, pinned: bool) -> None:
         """Set proxy pinned state."""
-        if not self._connection:
-            msg = "Database not connected"
-            raise RuntimeError(msg)
-        await self._connection.execute(
+        await self.conn.execute(
             "UPDATE proxies SET pinned = ? WHERE id = ?",
             (int(pinned), proxy_id),
         )
-        await self._connection.commit()
+        await self.conn.commit()
 
     async def update_proxy_note(self, proxy_id: int, note: str | None) -> None:
         """Update or clear a proxy note."""
-        if not self._connection:
-            msg = "Database not connected"
-            raise RuntimeError(msg)
-        await self._connection.execute(
+        await self.conn.execute(
             "UPDATE proxies SET note = ? WHERE id = ?",
             (note, proxy_id),
         )
-        await self._connection.commit()
+        await self.conn.commit()
 
     async def get_proxies(
         self,
         sort_by: SortBy = SortBy.LIKES,
-        limit: int = 100,
+        limit: int | None = None,
         offset: int = 0,
     ) -> list[ProxyInDB]:
         """Get list of proxies with sorting."""
-        if not self._connection:
-            msg = "Database not connected"
-            raise RuntimeError(msg)
+        if limit is None:
+            limit = config.app.page_size
         order_clause = {
             # Ensure pinned proxies appear first in Top (likes) view
             SortBy.LIKES: "pinned DESC, likes - dislikes DESC, likes DESC",
@@ -333,7 +287,7 @@ class Database:
             """,
             SortBy.NEWEST: "created_at DESC",
         }[sort_by]
-        cursor = await self._connection.execute(
+        cursor = await self.conn.execute(
             f"SELECT * FROM proxies ORDER BY {order_clause} LIMIT ? OFFSET ?",
             (limit, offset),
         )
@@ -342,10 +296,7 @@ class Database:
 
     async def get_total_count(self) -> int:
         """Get total proxy count."""
-        if not self._connection:
-            msg = "Database not connected"
-            raise RuntimeError(msg)
-        cursor = await self._connection.execute("SELECT COUNT(*) FROM proxies")
+        cursor = await self.conn.execute("SELECT COUNT(*) FROM proxies")
         row = await cursor.fetchone()
         return row[0] if row else 0
 
@@ -354,15 +305,16 @@ class Database:
         proxy_id: int,
         voter_id: str,
         vote_type: str,
-    ) -> tuple[int, int] | None:
+    ) -> tuple[int, int, str | None] | None:
         """
-        Record a vote. Returns (likes, dislikes) or None if already voted.
+        Record, switch or remove a vote.
+
+        Clicking the same vote again removes it. Returns
+        ``(likes, dislikes, current_vote)`` where ``current_vote`` is the
+        resulting vote ("like"/"dislike") or ``None`` when it was removed.
         """
-        if not self._connection:
-            msg = "Database not connected"
-            raise RuntimeError(msg)
         now = datetime.utcnow().isoformat()
-        cursor = await self._connection.execute(
+        cursor = await self.conn.execute(
             "SELECT vote_type FROM votes WHERE proxy_id = ? AND voter_id = ?",
             (proxy_id, voter_id),
         )
@@ -370,61 +322,70 @@ class Database:
         if existing:
             old_type = existing["vote_type"]
             if old_type == vote_type:
-                return None
-            async with self.transaction():
-                await self._connection.execute(
-                    "UPDATE votes SET vote_type = ?, created_at = ? WHERE proxy_id = ? AND voter_id = ?",
-                    (vote_type, now, proxy_id, voter_id),
-                )
-                if vote_type == "like":
-                    await self._connection.execute(
-                        "UPDATE proxies SET likes = likes + 1, dislikes = dislikes - 1 WHERE id = ?",
+                async with self.transaction():
+                    await self.conn.execute(
+                        "DELETE FROM votes WHERE proxy_id = ? AND voter_id = ?",
+                        (proxy_id, voter_id),
+                    )
+                    column = "likes" if vote_type == "like" else "dislikes"
+                    await self.conn.execute(
+                        f"UPDATE proxies SET {column} = MAX({column} - 1, 0) WHERE id = ?",
                         (proxy_id,),
                     )
-                else:
-                    await self._connection.execute(
-                        "UPDATE proxies SET dislikes = dislikes + 1, likes = likes - 1 WHERE id = ?",
-                        (proxy_id,),
+                current_vote = None
+            else:
+                async with self.transaction():
+                    await self.conn.execute(
+                        "UPDATE votes SET vote_type = ?, created_at = ? WHERE proxy_id = ? AND voter_id = ?",
+                        (vote_type, now, proxy_id, voter_id),
                     )
+                    if vote_type == "like":
+                        await self.conn.execute(
+                            "UPDATE proxies SET likes = likes + 1, dislikes = MAX(dislikes - 1, 0) WHERE id = ?",
+                            (proxy_id,),
+                        )
+                    else:
+                        await self.conn.execute(
+                            "UPDATE proxies SET dislikes = dislikes + 1, likes = MAX(likes - 1, 0) WHERE id = ?",
+                            (proxy_id,),
+                        )
+                current_vote = vote_type
         else:
             async with self.transaction():
-                await self._connection.execute(
+                await self.conn.execute(
                     "INSERT INTO votes (proxy_id, voter_id, vote_type, created_at) VALUES (?, ?, ?, ?)",
                     (proxy_id, voter_id, vote_type, now),
                 )
                 column = "likes" if vote_type == "like" else "dislikes"
-                await self._connection.execute(
+                await self.conn.execute(
                     f"UPDATE proxies SET {column} = {column} + 1 WHERE id = ?",
                     (proxy_id,),
                 )
-        cursor = await self._connection.execute(
+            current_vote = vote_type
+        cursor = await self.conn.execute(
             "SELECT likes, dislikes FROM proxies WHERE id = ?", (proxy_id,)
         )
         row = await cursor.fetchone()
-        return (row["likes"], row["dislikes"]) if row else None
+        return (row["likes"], row["dislikes"], current_vote) if row else None
 
     async def get_vote(self, proxy_id: int, voter_id: str) -> str | None:
         """Get user's vote for a proxy."""
-        if not self._connection:
-            msg = "Database not connected"
-            raise RuntimeError(msg)
-        cursor = await self._connection.execute(
+        cursor = await self.conn.execute(
             "SELECT vote_type FROM votes WHERE proxy_id = ? AND voter_id = ?",
             (proxy_id, voter_id),
         )
         row = await cursor.fetchone()
         return row["vote_type"] if row else None
 
-    async def delete_most_disliked(self, min_dislikes: int = 5) -> int:
+    async def delete_most_disliked(self, min_dislikes: int | None = None) -> int:
         """
         Delete proxies when dislikes exceed half of likes, but never below min_dislikes.
         Returns count of deleted proxies.
         """
-        if not self._connection:
-            msg = "Database not connected"
-            raise RuntimeError(msg)
+        if min_dislikes is None:
+            min_dislikes = config.workers.min_dislikes
 
-        cursor = await self._connection.execute(
+        cursor = await self.conn.execute(
             """
             SELECT COUNT(*) AS count
             FROM proxies
@@ -437,7 +398,7 @@ class Database:
         row = await cursor.fetchone()
         deleted_count = row["count"] if row else 0
         if deleted_count > 0:
-            await self._connection.execute(
+            await self.conn.execute(
                 """
                 DELETE FROM proxies
                 WHERE pinned = 0
@@ -446,29 +407,25 @@ class Database:
                 """,
                 (min_dislikes,),
             )
-            await self._connection.commit()
-            await self._connection.execute(
+            await self.conn.commit()
+            await self.conn.execute(
                 "UPDATE stats SET last_cleanup = ?",
                 (datetime.utcnow().isoformat(),),
             )
-            await self._connection.commit()
+            await self.conn.commit()
         return deleted_count
 
-    async def delete_old_failed_proxies(self, days: int = 5) -> int:
+    async def delete_old_failed_proxies(self, days: int | None = None) -> int:
         """
         Delete proxies that have been in FAILED status for more than specified days.
         Returns count of deleted proxies.
         """
-        if not self._connection:
-            msg = "Database not connected"
-            raise RuntimeError(msg)
-        from datetime import timedelta
-
+        if days is None:
+            days = config.workers.failed_days
         cutoff = (datetime.utcnow() - timedelta(days=days)).isoformat()
-        # Use failed_since to determine how long proxy has been failing
-        cursor = await self._connection.execute(
+        cursor = await self.conn.execute(
             """
-            SELECT id FROM proxies
+            DELETE FROM proxies
             WHERE ping_status = 'failed'
               AND failed_since IS NOT NULL
               AND failed_since < ?
@@ -476,27 +433,18 @@ class Database:
             """,
             (cutoff,),
         )
-        rows = await cursor.fetchall()
-        deleted_count = 0
-        for row in rows:
-            proxy_id = row["id"]
-            await self._connection.execute(
-                "DELETE FROM proxies WHERE id = ?", (proxy_id,)
-            )
-            deleted_count += 1
+        deleted_count = cursor.rowcount
         if deleted_count > 0:
-            await self._connection.commit()
-            now = datetime.utcnow().isoformat()
-            await self._connection.execute("UPDATE stats SET last_cleanup = ?", (now,))
-            await self._connection.commit()
+            await self.conn.execute(
+                "UPDATE stats SET last_cleanup = ?",
+                (datetime.utcnow().isoformat(),),
+            )
+        await self.conn.commit()
         return deleted_count
 
     async def get_stats(self) -> dict:
         """Get aggregate statistics."""
-        if not self._connection:
-            msg = "Database not connected"
-            raise RuntimeError(msg)
-        cursor = await self._connection.execute("""
+        cursor = await self.conn.execute("""
             SELECT
                 COUNT(*) as total,
                 COALESCE(SUM(likes), 0) as total_likes,
@@ -506,9 +454,7 @@ class Database:
             FROM proxies
         """)
         row = await cursor.fetchone()
-        cursor2 = await self._connection.execute(
-            "SELECT last_cleanup FROM stats WHERE id = 1"
-        )
+        cursor2 = await self.conn.execute("SELECT last_cleanup FROM stats WHERE id = 1")
         stats_row = await cursor2.fetchone()
         return {
             "total_proxies": row["total"] or 0,
@@ -522,20 +468,16 @@ class Database:
         }
 
     async def get_all_for_ping(
-        self, skip_failed_hours: int = 2
+        self, skip_failed_hours: int | None = None
     ) -> list[tuple[int, str, int, str, ProxyType]]:
         """
         Get proxies for ping checking. Returns (id, server, port, secret).
         Skips proxies that failed recently (within skip_failed_hours) to avoid spamming dead proxies.
         """
-        if not self._connection:
-            msg = "Database not connected"
-            raise RuntimeError(msg)
-        cutoff = datetime.utcnow()
-        from datetime import timedelta
-
-        cutoff = (cutoff - timedelta(hours=skip_failed_hours)).isoformat()
-        cursor = await self._connection.execute(
+        if skip_failed_hours is None:
+            skip_failed_hours = config.workers.skip_failed_hours
+        cutoff = (datetime.utcnow() - timedelta(hours=skip_failed_hours)).isoformat()
+        cursor = await self.conn.execute(
             """
             SELECT id, server, port, secret, proxy_type FROM proxies
             WHERE ping_status != 'failed'

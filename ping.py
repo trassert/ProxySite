@@ -25,10 +25,9 @@ from dataclasses import dataclass
 from enum import StrEnum
 from urllib.parse import parse_qs, urlparse
 
+from config import config
 from models import PingStatus, ProxyType
-
-PING_OK_THRESHOLD = 500
-PING_WARNING_THRESHOLD = 1500
+from security import BlockedHostError, resolve_public_host
 
 
 class ProxyMode(StrEnum):
@@ -61,7 +60,6 @@ _NETWORK_ERRORS = (
 class PingChecker:
     """Async ping checker for default, obfuscated and fake-tls MTProto proxies."""
 
-    TIMEOUT: float = 5.0
     HANDSHAKE_LEN: int = 64
     PROTO_TAG_POS: int = 56
     DC_IDX_POS: int = 60
@@ -112,25 +110,48 @@ class PingChecker:
         proxy_type: ProxyType = ProxyType.MT_PROTO,
     ) -> PingResult:
         """Check proxy availability using protocol-specific handshake."""
+        try:
+            resolved = await resolve_public_host(server)
+        except BlockedHostError:
+            return PingResult(
+                ping_ms=None,
+                status=PingStatus.FAILED,
+                tcp_ok=False,
+                dns_ok=False,
+                is_fallback=False,
+            )
+
+        # Pin the connection to a validated IP so DNS rebinding cannot redirect
+        # the probe to a private address after the check above.
+        connect_host = resolved[0]
+
         secret = cls._normalize_secret(secret)
         mode = cls._detect_mode(secret)
 
         loop = asyncio.get_running_loop()
-        protocol_deadline = loop.time() + cls.TIMEOUT
+        timeout = config.ping.timeout_seconds
+        protocol_deadline = loop.time() + timeout
 
         if proxy_type == ProxyType.WEB:
             proxy_get_ok, ping_ms = await cls._webproxy_get_check(
-                server, secret, protocol_deadline
+                server, secret, protocol_deadline, connect_host=connect_host
             )
         else:
             proxy_get_ok, ping_ms = await cls._proxy_get_check(
-                server, port, secret, mode, protocol_deadline
+                server,
+                port,
+                secret,
+                mode,
+                protocol_deadline,
+                connect_host=connect_host,
             )
 
         if proxy_get_ok:
             return cls._protocol_success(ping_ms)
 
-        tcp_ok, tcp_ping_ms = await cls._tcp_check(server, port, time_limit=cls.TIMEOUT)
+        tcp_ok, tcp_ping_ms = await cls._tcp_check(
+            server, port, time_limit=timeout, connect_host=connect_host
+        )
         if tcp_ok:
             return cls._fallback_success(tcp_ping_ms)
 
@@ -148,6 +169,8 @@ class PingChecker:
         server: str,
         secret: str | None,
         deadline: float,
+        *,
+        connect_host: str | None = None,
     ) -> tuple[bool, int | None]:
         """Check the webproxy bridge with its real HTTPS GET entry point."""
         if not secret:
@@ -177,7 +200,12 @@ class PingChecker:
                 return False, None
             tls = ssl.create_default_context()
             reader, writer = await asyncio.wait_for(
-                asyncio.open_connection(server, 443, ssl=tls, server_hostname=server),
+                asyncio.open_connection(
+                    connect_host or server,
+                    443,
+                    ssl=tls,
+                    server_hostname=server,
+                ),
                 timeout=remaining,
             )
             writer.write(request)
@@ -202,34 +230,31 @@ class PingChecker:
         secret: str | None = None,
         mode: ProxyMode | None = None,
         deadline: float | None = None,
+        *,
+        connect_host: str | None = None,
     ) -> tuple[bool, int | None]:
         """Protocol-level check dispatcher."""
         loop = asyncio.get_running_loop()
         if deadline is None:
-            deadline = loop.time() + cls.TIMEOUT
+            deadline = loop.time() + config.ping.timeout_seconds
 
         secret = cls._normalize_secret(secret)
         if mode is None:
             mode = cls._detect_mode(secret)
 
         if mode == ProxyMode.FAKE_TLS:
-            checks = (cls._fake_tls_check,)
-        elif mode == ProxyMode.OBFUSCATED:
-            checks = (cls._obfuscated_handshake_check,)
+            check = cls._fake_tls_check
         else:
-            # Default mode also uses obfuscated handshake (without secret)
-            checks = (cls._obfuscated_handshake_check,)
+            # Default and obfuscated modes use the obfuscated handshake.
+            check = cls._obfuscated_handshake_check
 
-        for check in checks:
-            remaining = deadline - loop.time()
-            if remaining <= 0:
-                break
+        remaining = deadline - loop.time()
+        if remaining <= 0:
+            return False, None
 
-            ok, ping_ms = await check(server, port, secret, time_limit=remaining)
-            if ok:
-                return True, ping_ms
-
-        return False, None
+        return await check(
+            server, port, secret, time_limit=remaining, connect_host=connect_host
+        )
 
     @classmethod
     async def _obfuscated_handshake_check(
@@ -239,6 +264,7 @@ class PingChecker:
         secret: str | None = None,
         *,
         time_limit: float | None = None,
+        connect_host: str | None = None,
     ) -> tuple[bool, int | None]:
         """
         Valid MTProto obfuscated handshake for dd-proxies and default mode.
@@ -255,7 +281,7 @@ class PingChecker:
                 return False, None
 
             reader, writer = await asyncio.wait_for(
-                asyncio.open_connection(server, port),
+                asyncio.open_connection(connect_host or server, port),
                 timeout=remaining,
             )
 
@@ -336,15 +362,7 @@ class PingChecker:
         dc_idx = random.randint(1, 5)
         rnd[cls.DC_IDX_POS : cls.DC_IDX_POS + 4] = struct.pack("<I", dc_idx)
 
-        # Extract encryption key and IV (bytes 8-56, reversed)
-        dec_key_and_iv = rnd[cls.SKIP_LEN : cls.SKIP_LEN + cls.KEY_LEN + cls.IV_LEN][
-            ::-1
-        ]
-        dec_key_and_iv[: cls.KEY_LEN]
-        dec_key_and_iv[cls.KEY_LEN :]
-
-        # For obfuscated handshake, we encrypt the packet itself
-        # Use the same key/iv for encryption (reversed back)
+        # Derive the encryption key/IV from bytes 8-56 of the nonce
         enc_key_and_iv = rnd[cls.SKIP_LEN : cls.SKIP_LEN + cls.KEY_LEN + cls.IV_LEN]
         enc_key = enc_key_and_iv[: cls.KEY_LEN]
         enc_iv = enc_key_and_iv[cls.KEY_LEN :]
@@ -410,6 +428,7 @@ class PingChecker:
         secret: str | None = None,
         *,
         time_limit: float | None = None,
+        connect_host: str | None = None,
     ) -> tuple[bool, int | None]:
         """
         Fake-tls probe with randomized ClientHello to avoid JA3 detection.
@@ -434,7 +453,7 @@ class PingChecker:
                 return False, None
 
             reader, writer = await asyncio.wait_for(
-                asyncio.open_connection(server, port),
+                asyncio.open_connection(connect_host or server, port),
                 timeout=remaining,
             )
 
@@ -463,8 +482,6 @@ class PingChecker:
 
             if version_major != 0x03 or content_type not in (0x15, 0x16):
                 return False, None
-
-            return True, ping_ms
 
         except _NETWORK_ERRORS:
             return False, None
@@ -536,6 +553,7 @@ class PingChecker:
         port: int,
         *,
         time_limit: float | None = None,
+        connect_host: str | None = None,
     ) -> tuple[bool, int | None]:
         """Basic TCP connectivity check."""
         loop = asyncio.get_running_loop()
@@ -550,16 +568,14 @@ class PingChecker:
             start = loop.time()
 
             reader, writer = await asyncio.wait_for(
-                asyncio.open_connection(server, port),
+                asyncio.open_connection(connect_host or server, port),
                 timeout=remaining,
             )
-
-            ping_ms = int((loop.time() - start) * 1000)
-            return True, ping_ms
 
         except _NETWORK_ERRORS:
             return False, None
         else:
+            ping_ms = int((loop.time() - start) * 1000)
             return True, ping_ms
         finally:
             await cls._close_writer(writer)
@@ -683,7 +699,7 @@ class PingChecker:
     def _deadline(cls, timeout: float | None) -> float:
         loop = asyncio.get_running_loop()
         if timeout is None:
-            return loop.time() + cls.TIMEOUT
+            timeout = config.ping.timeout_seconds
         return loop.time() + max(0.0, float(timeout))
 
     @classmethod
@@ -718,6 +734,6 @@ class PingChecker:
 
     @classmethod
     def _status_for_ping(cls, ping_ms: int | None) -> PingStatus:
-        if ping_ms is not None and ping_ms <= PING_OK_THRESHOLD:
+        if ping_ms is not None and ping_ms <= config.ping.ok_threshold_ms:
             return PingStatus.OK
         return PingStatus.WARNING

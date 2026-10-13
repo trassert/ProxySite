@@ -5,6 +5,7 @@ configured channels. Any supported Telegram proxy links found in message text
 are parsed and added to the local proxy database.
 """
 
+import asyncio
 from pathlib import Path
 
 from loguru import logger
@@ -15,10 +16,6 @@ from database import db
 from models import PingStatus
 from parser import ProxyLinkParser
 from ping import PingChecker
-
-SESSION_DIR = Path(".session")
-SESSION_DIR.mkdir(parents=True, exist_ok=True)
-SESSION_FILE = SESSION_DIR / f"{config.telegram.session_name}.session"
 
 
 class TelegramProxyListener:
@@ -38,11 +35,15 @@ class TelegramProxyListener:
             return
 
         if not config.telegram.api_id or not config.telegram.api_hash:
-            msg = "Telegram api_id/api_hash must be set in config.yml"
+            msg = config.messages.telegram_credentials_required
             raise RuntimeError(msg)
 
+        session_dir = Path(config.telegram.session_dir)
+        await asyncio.to_thread(session_dir.mkdir, parents=True, exist_ok=True)
+        session_file = session_dir / f"{config.telegram.session_name}.session"
+
         cls.client = TelegramClient(
-            str(SESSION_FILE),
+            str(session_file),
             config.telegram.api_id,
             config.telegram.api_hash,
         )

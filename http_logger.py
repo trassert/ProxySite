@@ -12,7 +12,7 @@ from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 
-from config import access_logger, logger
+from config import access_logger, config
 
 
 class RequestLogger(BaseHTTPMiddleware):
@@ -26,28 +26,21 @@ class RequestLogger(BaseHTTPMiddleware):
     - Shows only important information
     """
 
-    # Endpoints to skip logging (health checks, static files, etc.)
-    SKIP_PATHS = {
-        "/static/",
-        "/health",
-        "/metrics",
-        "/ping",
-    }
-
     # Paths that are logged but grouped (count duplicates within time window)
     GROUPED_PATTERNS = [
         r"^/api/vote/\d+$",
         r"^/api/proxies",
     ]
 
-    # Count interval and time window for grouping similar requests
-    GROUP_COUNT_INTERVAL = 10
-    GROUP_WINDOW = 10
+    # Max entries kept per grouped path before old ones roll off
+    HISTORY_MAXLEN = 100
 
     def __init__(self, app):
         super().__init__(app)
         # Store request counts: {pattern_key: deque of (timestamp, status))}
-        self.request_history: dict = defaultdict(lambda: deque(maxlen=100))
+        self.request_history: dict = defaultdict(
+            lambda: deque(maxlen=self.HISTORY_MAXLEN)
+        )
 
     @staticmethod
     def _normalize_path(path: str) -> str:
@@ -61,7 +54,7 @@ class RequestLogger(BaseHTTPMiddleware):
         method = request.method
 
         # Skip logging for certain paths
-        if any(path.startswith(skip) for skip in self.SKIP_PATHS):
+        if any(path.startswith(skip) for skip in config.http_log.skip_paths):
             return await call_next(request)
 
         # Get client info
@@ -103,6 +96,8 @@ class RequestLogger(BaseHTTPMiddleware):
     ) -> None:
         """Log HTTP request with smart filtering."""
         current_time = time.time()
+        group_window = config.http_log.group_window_seconds
+        group_interval = config.http_log.group_count_interval
 
         # Check if this is a grouped path
         if self._is_grouped_path(path):
@@ -111,24 +106,24 @@ class RequestLogger(BaseHTTPMiddleware):
             history = self.request_history[key]
 
             # Remove old entries outside the time window
-            while history and (current_time - history[0][0]) > self.GROUP_WINDOW:
+            while history and (current_time - history[0][0]) > group_window:
                 history.popleft()
 
             # Count recent similar requests
             count = len(history)
             history.append((current_time, status))
 
-            # Log first request immediately, then every GROUP_COUNT_INTERVAL-th request
+            # Log first request immediately, then every group_interval-th request
             if count == 0:
                 self._log_message(method, normalized, client, status, duration)
-            elif count % self.GROUP_COUNT_INTERVAL == self.GROUP_COUNT_INTERVAL - 1:
+            elif count % group_interval == group_interval - 1:
                 self._log_message(
                     method,
                     normalized,
                     client,
                     status,
                     duration,
-                    note=f" +{count + 1}x",
+                    note=config.http_log.repeat_suffix.format(count=count + 1),
                 )
         else:
             # For non-grouped paths, always log
@@ -145,54 +140,19 @@ class RequestLogger(BaseHTTPMiddleware):
     ) -> None:
         """Write formatted log message."""
         # Truncate long paths
-        if len(path) > 40:
-            path = path[:37] + "..."
+        max_path_length = config.http_log.max_path_length
+        if len(path) > max_path_length:
+            keep = max_path_length - len("...")
+            path = path[:keep] + "..."
 
-        # Format duration in ms
-        duration_ms = duration * 1000
-
-        message = f"{method} {path} {status} {duration_ms:.0f}ms {client}"
+        message = config.http_log.message_format.format(
+            method=method,
+            path=path,
+            status=status,
+            duration_ms=f"{duration * 1000:.0f}",
+            client=client,
+        )
         if note:
             message += note
 
         access_logger.info(message)
-
-
-class SilentUvicornLogger:
-    """
-    Custom logger for Uvicorn that silences access logs.
-    Replace Uvicorn's default logging with this.
-    """
-
-    def __init__(self):
-        self.logger = logger
-
-    def access(self, request, response, process_time):
-        """Silence access logging - use RequestLogger middleware instead."""
-        pass
-
-    def error(self, message):
-        """Log errors."""
-        self.logger.error(message)
-
-    def critical(self, message):
-        """Log critical messages."""
-        self.logger.critical(message)
-
-    def warning(self, message):
-        """Log warnings."""
-        self.logger.warning(message)
-
-    def info(self, message):
-        """Log info messages."""
-        # Filter out access logs
-        if "GET" not in message and "POST" not in message:
-            self.logger.info(message)
-
-    def debug(self, message):
-        """Log debug messages."""
-        self.logger.debug(message)
-
-    def trace(self, message):
-        """Log trace messages."""
-        self.logger.trace(message)

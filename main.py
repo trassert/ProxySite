@@ -4,10 +4,14 @@ Main entry point with all routes.
 """
 
 import asyncio
+import hashlib
+import hmac
 import json
+import secrets
 import uuid
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from functools import lru_cache
 from pathlib import Path
 
 from fastapi import FastAPI, Form, HTTPException, Request, Response
@@ -35,6 +39,7 @@ from models import (
 from parser import ProxyLinkParser
 from performance import RateLimiter, cache_store
 from ping import PingChecker
+from security import BlockedHostError, ensure_public_host
 from telethon_client import TelegramProxyListener
 
 cleanup_task: asyncio.Task | None = None
@@ -42,10 +47,12 @@ ping_task: asyncio.Task | None = None
 
 
 async def cleanup_worker() -> None:
-    """Background worker that removes disliked proxies and old failed proxies every 30 minutes."""
+    """Background worker that removes disliked and old failed proxies periodically."""
     while True:
         try:
-            deleted_count = await db.delete_most_disliked(min_dislikes=5)
+            deleted_count = await db.delete_most_disliked(
+                min_dislikes=config.workers.min_dislikes
+            )
             if deleted_count:
                 logger.info(
                     "Deleted {count} disliked proxies",
@@ -53,7 +60,9 @@ async def cleanup_worker() -> None:
                 )
                 cache_store.invalidate("proxies")
 
-            deleted_count = await db.delete_old_failed_proxies(days=2)
+            deleted_count = await db.delete_old_failed_proxies(
+                days=config.workers.failed_days
+            )
             if deleted_count:
                 logger.info(
                     "Removed {count} old failed proxies",
@@ -62,7 +71,7 @@ async def cleanup_worker() -> None:
                 cache_store.invalidate("proxies")
         except Exception as exc:
             logger.exception("Cleanup worker failed: {error}", error=exc)
-        await asyncio.sleep(30 * 60)
+        await asyncio.sleep(config.workers.cleanup_interval_seconds)
 
 
 async def ping_worker() -> None:
@@ -83,12 +92,12 @@ async def ping_worker() -> None:
                     tcp_ping_ms=result.tcp_ping_ms,
                 )
                 checked += 1
-                await asyncio.sleep(0.5)
+                await asyncio.sleep(config.workers.ping_delay_seconds)
             logger.info("Ping cycle completed: {count} proxies checked", count=checked)
         except Exception as exc:
             logger.exception("Ping worker failed: {error}", error=exc)
 
-        await asyncio.sleep(5 * 60)
+        await asyncio.sleep(config.workers.ping_interval_seconds)
 
 
 @asynccontextmanager
@@ -117,9 +126,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
 
 
 app = FastAPI(
-    title="MTProto Proxy Hub",
-    description="Community-driven MTProto proxy aggregator",
-    version="1.0.0",
+    title=config.app.title,
+    description=config.app.description,
+    version=config.app.version,
     lifespan=lifespan,
 )
 
@@ -135,35 +144,113 @@ templates_path = Path(__file__).parent / "templates"
 templates_path.mkdir(exist_ok=True)
 templates = Jinja2Templates(directory=templates_path)
 
+_COOKIE_SECRET_CONTEXT = b"voter-cookie-v1"
+
+
+@lru_cache(maxsize=1)
+def _cookie_secret() -> bytes:
+    """Resolve a stable HMAC key for signing voter cookies.
+
+    Uses a dedicated ``secret_key`` when configured. Otherwise a random key is
+    persisted under ``data/.voter_secret`` so cookies stay valid across process
+    restarts and multiple workers (otherwise every worker would sign with a
+    different key and voter de-duplication would silently break).
+
+    The raw material is run through a one-way derivation with a fixed context
+    label, so the signing key is domain-separated from its source and is never
+    reused verbatim for another purpose (e.g. admin authentication). Cached so
+    the key is read once per process and stays stable.
+    """
+    configured = str(config.app.secret_key or "").strip()
+    if configured:
+        material = configured.encode()
+    else:
+        logger.warning(
+            "app.secret_key is not set; using a generated voter cookie secret"
+        )
+        secret_path = Path(config.app.voter_secret_file)
+        try:
+            material = secret_path.read_bytes()
+        except OSError:
+            material = b""
+        if not material:
+            material = secrets.token_bytes(config.app.voter_secret_bytes)
+            try:
+                secret_path.parent.mkdir(parents=True, exist_ok=True)
+                secret_path.write_bytes(material)
+                secret_path.chmod(0o600)
+            except OSError:
+                logger.warning(
+                    "Could not persist voter cookie secret; using an ephemeral key"
+                )
+    return hmac.new(material, _COOKIE_SECRET_CONTEXT, hashlib.sha256).digest()
+
+
+def _sign_voter_id(voter_id: str) -> str:
+    """Sign a voter ID so it cannot be forged or tampered with."""
+    signature = hmac.new(
+        _cookie_secret(), voter_id.encode(), hashlib.sha256
+    ).hexdigest()
+    return f"{voter_id}.{signature}"
+
+
+def _read_voter_id(value: str | None) -> str | None:
+    """Validate a signed voter cookie and return the raw voter ID."""
+    if not value or "." not in value:
+        return None
+    voter_id, _, signature = value.rpartition(".")
+    if not voter_id:
+        return None
+    expected = hmac.new(_cookie_secret(), voter_id.encode(), hashlib.sha256).hexdigest()
+    return voter_id if hmac.compare_digest(signature, expected) else None
+
 
 def get_voter_id(request: Request, response: Response) -> str:
-    """Get or create voter ID from cookie."""
-    voter_id = request.cookies.get("voter_id")
+    """Get or create a signed voter ID from cookie."""
+    voter_id = _read_voter_id(request.cookies.get(config.app.voter_cookie))
     if not voter_id:
         voter_id = str(uuid.uuid4())
         response.set_cookie(
-            key="voter_id",
-            value=voter_id,
-            max_age=365 * 24 * 60 * 60,
+            key=config.app.voter_cookie,
+            value=_sign_voter_id(voter_id),
+            max_age=config.app.voter_cookie_max_age,
             httponly=True,
-            samesite="lax",
+            samesite=config.app.voter_cookie_samesite,
+            secure=request.url.scheme == "https",
         )
     return voter_id
+
+
+def require_password(password: str, feature: str) -> None:
+    """Validate the admin password using a constant-time comparison."""
+    configured = str(config.app.password or "")
+    if not configured:
+        raise HTTPException(
+            status_code=403,
+            detail=config.messages.feature_not_configured.format(feature=feature),
+        )
+    if not secrets.compare_digest(password.encode(), configured.encode()):
+        raise HTTPException(status_code=403, detail=config.messages.invalid_password)
 
 
 async def _validate_and_create_proxy(
     proxy: ProxyCreate,
 ) -> tuple[ProxyResponse | None, str | None]:
     """Validate proxy ping and add it to the database if reachable."""
+    try:
+        await ensure_public_host(proxy.server)
+    except BlockedHostError:
+        return None, config.messages.proxy_host_not_allowed
+
     result = await PingChecker.check(
         proxy.server, proxy.port, proxy.secret, proxy.proxy_type
     )
     if result.status == PingStatus.FAILED:
-        return None, "Proxy failed ping check"
+        return None, config.messages.proxy_failed_ping
 
     added = await db.add_proxy(proxy)
     if not added:
-        return None, "Proxy already exists"
+        return None, config.messages.proxy_already_exists
 
     await db.update_ping(
         proxy_id=added.id,
@@ -184,7 +271,7 @@ async def index(
 ) -> Response:
     """Main page with proxy list."""
     sort_by = SortBy(sort) if sort in [s.value for s in SortBy] else SortBy.LIKES
-    proxies = await db.get_proxies(sort_by=sort_by, limit=100)
+    proxies = await db.get_proxies(sort_by=sort_by, limit=config.app.page_size)
     total = await db.get_total_count()
     stats = await db.get_stats()
 
@@ -207,10 +294,12 @@ async def index(
 @app.get("/api/proxies", response_model=ProxyListResponse)
 async def list_proxies(
     sort: str = "likes",
-    limit: int = 100,
+    limit: int | None = None,
     offset: int = 0,
 ) -> ProxyListResponse:
     """Get list of proxies."""
+    if limit is None:
+        limit = config.app.page_size
     sort_by = SortBy(sort) if sort in [s.value for s in SortBy] else SortBy.LIKES
     proxies = await db.get_proxies(sort_by=sort_by, limit=limit, offset=offset)
     total = await db.get_total_count()
@@ -227,7 +316,7 @@ async def add_proxy(proxy: ProxyCreate) -> ProxyResponse | dict:
     """Add a single proxy."""
     result, error = await _validate_and_create_proxy(proxy)
     if error:
-        if error == "Proxy already exists":
+        if error == config.messages.proxy_already_exists:
             raise HTTPException(status_code=409, detail=error)
         raise HTTPException(status_code=400, detail=error)
     return result
@@ -260,7 +349,7 @@ async def add_bulk(data: ParseLinksRequest) -> dict:
             results.append(
                 {"address": f"{proxy.server}:{proxy.port}", "status": "added"}
             )
-        elif error == "Proxy already exists":
+        elif error == config.messages.proxy_already_exists:
             duplicates += 1
             results.append(
                 {
@@ -295,33 +384,26 @@ async def vote(
 
     proxy = await db.get_proxy(data.proxy_id)
     if not proxy:
-        raise HTTPException(status_code=404, detail="Proxy not found")
+        raise HTTPException(status_code=404, detail=config.messages.proxy_not_found)
 
     result = await db.vote(data.proxy_id, voter_id, data.vote_type)
 
     if result is None:
-        return VoteResponse(
-            success=False,
-            likes=proxy.likes,
-            dislikes=proxy.dislikes,
-            message="Already voted",
-        )
+        raise HTTPException(status_code=404, detail=config.messages.proxy_not_found)
 
-    likes, dislikes = result
+    likes, dislikes, current_vote = result
 
-    # Return new position when liked for dynamic re-sorting
-    new_position = None
-    if data.vote_type == "like":
-        proxies = await db.get_proxies(sort_by=SortBy.LIKES, limit=100, offset=0)
-        new_position = next(
-            (i for i, p in enumerate(proxies) if p.id == data.proxy_id), -1
-        )
+    proxies = await db.get_proxies(
+        sort_by=SortBy.LIKES, limit=config.app.page_size, offset=0
+    )
+    new_position = next((i for i, p in enumerate(proxies) if p.id == data.proxy_id), -1)
 
     return VoteResponse(
         success=True,
         likes=likes,
         dislikes=dislikes,
         position=new_position,
+        vote=current_vote,
     )
 
 
@@ -331,17 +413,11 @@ async def pin_proxy(
     data: PinRequest,
 ) -> dict:
     """Pin or unpin a proxy with password authentication."""
-    if not config.app.password:
-        raise HTTPException(
-            status_code=403,
-            detail="Pin password is not configured",
-        )
-    if data.password != config.app.password:
-        raise HTTPException(status_code=403, detail="Invalid password")
+    require_password(data.password, "Pin password")
 
     proxy = await db.get_proxy(proxy_id)
     if not proxy:
-        raise HTTPException(status_code=404, detail="Proxy not found")
+        raise HTTPException(status_code=404, detail=config.messages.proxy_not_found)
 
     await db.set_proxy_pinned(proxy_id, data.pinned)
     return {"success": True, "pinned": data.pinned}
@@ -350,15 +426,9 @@ async def pin_proxy(
 @app.patch("/api/proxies/{proxy_id}/note")
 async def update_proxy_note(proxy_id: int, data: NoteUpdate) -> dict:
     """Update or clear a proxy note with admin authentication."""
-    if not config.app.password:
-        raise HTTPException(
-            status_code=403,
-            detail="Note editing is not configured",
-        )
-    if data.password != config.app.password:
-        raise HTTPException(status_code=403, detail="Invalid password")
+    require_password(data.password, "Note editing")
     if not await db.get_proxy(proxy_id):
-        raise HTTPException(status_code=404, detail="Proxy not found")
+        raise HTTPException(status_code=404, detail=config.messages.proxy_not_found)
 
     await db.update_proxy_note(proxy_id, data.note)
     return {"success": True, "note": data.note}
@@ -383,91 +453,47 @@ async def get_stats() -> StatsResponse:
     return StatsResponse(**stats)
 
 
-async def ping_proxy_async(
-    proxy_id: int, server: str, port: int, secret: str, proxy_type: str
-) -> None:
-    """Background task to ping a newly added proxy."""
-    try:
-        result = await PingChecker.check(server, port, secret, proxy_type)
-        await db.update_ping(
-            proxy_id=proxy_id,
-            ping_ms=result.ping_ms,
-            ping_status=result.status,
-            tcp_ok=result.tcp_ok,
-            dns_ok=result.dns_ok,
-            is_fallback=result.is_fallback,
-            tcp_ping_ms=result.tcp_ping_ms,
-        )
-    except Exception as exc:
-        logger.exception(
-            "Auto-ping failed for proxy {proxy_id}",
-            proxy_id=proxy_id,
-            exc=exc,
-        )
-
-
 @app.post("/api/add-proxy")
 async def add_proxy_api(data: dict) -> dict:
     """Add proxy via API (JSON)."""
+    links = data.get("links", "")
+    if isinstance(links, str) and links.strip():
+        return StreamingResponse(
+            stream_proxy_import(links),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "X-Accel-Buffering": "no",
+            },
+        )
 
-    try:
-        if "links" in data and data["links"].strip():
-            return StreamingResponse(
-                stream_proxy_import(data["links"]),
-                media_type="text/event-stream",
-                headers={
-                    "Cache-Control": "no-cache",
-                    "X-Accel-Buffering": "no",
-                },
-            )
-        if data.get("server") and data.get("port") and data.get("secret"):
-            try:
-                proxy = ProxyCreate(
-                    server=data["server"],
-                    port=int(data["port"]),
-                    secret=data["secret"],
-                    proxy_type=data.get("proxy_type", "mtproto"),
-                    note=data.get("note"),
-                )
-                result, error = await _validate_and_create_proxy(proxy)
-                if error and error != "Proxy already exists":
-                    return {
-                        "added": 0,
-                        "duplicates": 0,
-                        "errors": [error],
-                    }
-                if error == "Proxy already exists":
-                    return {
-                        "added": 0,
-                        "duplicates": 1,
-                        "errors": [],
-                    }
-
-            except ValueError as e:
-                return {
-                    "added": 0,
-                    "duplicates": 0,
-                    "errors": [str(e)],
-                }
-            else:
-                return {
-                    "added": 1 if result else 0,
-                    "duplicates": 0 if result else 1,
-                    "errors": [],
-                }
-        else:
-            return {
-                "added": 0,
-                "duplicates": 0,
-                "errors": ["No proxy data provided"],
-            }
-    except Exception as e:
-        logger.exception("Failed to add proxy through API: {error}", error=e)
+    if not (data.get("server") and data.get("port") and data.get("secret")):
         return {
             "added": 0,
             "duplicates": 0,
-            "errors": ["Internal error"],
+            "errors": [config.messages.no_proxy_data],
         }
+
+    try:
+        proxy = ProxyCreate(
+            server=data["server"],
+            port=int(data["port"]),
+            secret=data["secret"],
+            proxy_type=data.get("proxy_type", "mtproto"),
+            note=data.get("note"),
+        )
+        _, error = await _validate_and_create_proxy(proxy)
+    except ValueError as e:
+        return {"added": 0, "duplicates": 0, "errors": [str(e)]}
+    except Exception as e:
+        logger.exception("Failed to add proxy through API: {error}", error=e)
+        return {"added": 0, "duplicates": 0, "errors": [config.messages.internal_error]}
+
+    if error == config.messages.proxy_already_exists:
+        return {"added": 0, "duplicates": 1, "errors": []}
+    if error:
+        return {"added": 0, "duplicates": 0, "errors": [error]}
+    return {"added": 1, "duplicates": 0, "errors": []}
 
 
 async def stream_proxy_import(text: str):
@@ -485,7 +511,7 @@ async def stream_proxy_import(text: str):
         if result:
             added += 1
             status = "added"
-        elif error == "Proxy already exists":
+        elif error == config.messages.proxy_already_exists:
             duplicates += 1
             status = "duplicate"
         else:
@@ -501,7 +527,7 @@ async def trigger_ping(proxy_id: int) -> dict:
     """Manually trigger ping check for a proxy."""
     proxy = await db.get_proxy(proxy_id)
     if not proxy:
-        raise HTTPException(status_code=404, detail="Proxy not found")
+        raise HTTPException(status_code=404, detail=config.messages.proxy_not_found)
 
     result = await PingChecker.check(
         proxy.server, proxy.port, proxy.secret, proxy.proxy_type
@@ -548,7 +574,7 @@ async def add_proxy_form(
             result, error = await _validate_and_create_proxy(proxy)
             if result:
                 added += 1
-            elif error == "Proxy already exists":
+            elif error == config.messages.proxy_already_exists:
                 duplicates += 1
             elif error:
                 errors.append(f"{proxy.server}:{proxy.port} - {error}")
@@ -559,7 +585,7 @@ async def add_proxy_form(
             result, error = await _validate_and_create_proxy(proxy)
             if result:
                 added += 1
-            elif error == "Proxy already exists":
+            elif error == config.messages.proxy_already_exists:
                 duplicates += 1
             elif error:
                 errors.append(error)
@@ -568,11 +594,11 @@ async def add_proxy_form(
 
     from starlette.responses import RedirectResponse
 
-    message = f"Added: {added}"
+    message = config.messages.ui_added.format(added=added)
     if duplicates:
-        message += f", Duplicates: {duplicates}"
+        message += config.messages.ui_duplicates_suffix.format(count=duplicates)
     if errors:
-        message += f", Errors: {len(errors)}"
+        message += config.messages.ui_errors_suffix.format(count=len(errors))
 
     return RedirectResponse(url=f"/?message={message}", status_code=303)
 
@@ -582,8 +608,8 @@ if __name__ == "__main__":
 
     uvicorn.run(
         app,
-        host="0.0.0.0",
-        port=8000,
+        host=config.app.host,
+        port=config.app.port,
         access_log=False,  # Disable default Uvicorn access logs
         log_config=None,  # Use our custom logging config from config.py
     )

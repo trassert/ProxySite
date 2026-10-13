@@ -1,6 +1,19 @@
 app:
   debug: false
   password: ""
+  secret_key: ""
+  title: "MTProto Proxy Hub"
+  description: "Community-driven MTProto proxy aggregator"
+  version: "1.0.0"
+  host: "0.0.0.0"
+  port: 8000
+  page_size: 100
+  database_path: "data/proxies.db"
+  voter_cookie: voter_id
+  voter_cookie_max_age: 31536000
+  voter_cookie_samesite: lax
+  voter_secret_file: "data/.voter_secret"
+  voter_secret_bytes: 32
 
 logging:
   level: INFO
@@ -8,13 +21,76 @@ logging:
   access_file: "logs/{time:YYYY-MM-DD}-access.log"
   rotation: "10 MB"
   retention: "7 days"
+  access_level: INFO
+  access_rotation: "1 day"
+  access_retention: "30 days"
+
+workers:
+  cleanup_interval_seconds: 1800
+  ping_interval_seconds: 300
+  ping_delay_seconds: 0.5
+  min_dislikes: 5
+  failed_days: 2
+  skip_failed_hours: 2
+
+ping:
+  timeout_seconds: 5.0
+  ok_threshold_ms: 500
+
+rate_limit:
+  enabled: true
+  window_seconds: 60
+  max_clients: 10000
+  limit_vote_get: 60
+  limit_vote_post: 30
+  limit_proxies: 30
+  limit_add_proxy: 10
+  limit_homepage: 120
+
+cache:
+  ttl_seconds: 60
+
+http_log:
+  skip_paths:
+    - "/static/"
+    - "/health"
+    - "/metrics"
+    - "/ping"
+  group_count_interval: 10
+  group_window_seconds: 10
+  max_path_length: 40
+  message_format: "{method} {path} {status} {duration_ms}ms {client}"
+  repeat_suffix: " +{count}x"
 
 telegram:
   enabled: false
   api_id: 0
   api_hash: ""
   session_name: proxyhub
+  session_dir: ".session"
   channels:
     - telemtrs
     - telemt_free_proxy
     - telemtfreeproxy
+
+messages:
+  proxy_host_not_allowed: "Proxy host is not allowed"
+  proxy_failed_ping: "Proxy failed ping check"
+  proxy_already_exists: "Proxy already exists"
+  no_proxy_data: "No proxy data provided"
+  internal_error: "Internal error"
+  proxy_not_found: "Proxy not found"
+  invalid_password: "Invalid password"
+  feature_not_configured: "{feature} is not configured"
+  rate_limit_exceeded: "Too many requests"
+  invalid_proxy_link: "Invalid proxy link"
+  telegram_credentials_required: "Telegram api_id/api_hash must be set in config.yml"
+  invalid_server: "Invalid server hostname or IP"
+  invalid_secret: "Secret must be an even number of hex characters (32+ digits)."
+  host_blocked: "Host resolves to a private or reserved address"
+  host_unresolved: "Host could not be resolved"
+  web_proxy_port: "Web proxy port must be 443"
+  web_proxy_no_ee: "Web proxy does not support ee secrets"
+  ui_added: "Added: {added}"
+  ui_duplicates_suffix: ", Duplicates: {count}"
+  ui_errors_suffix: ", Errors: {count}"
