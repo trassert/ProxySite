@@ -155,5 +155,5 @@ class RequestLogger(BaseHTTPMiddleware):
         if note:
             message += note
 
-        if config.config.logging.access_log is True:
+        if config.logging.access_log is True:
             access_logger.info(message)
