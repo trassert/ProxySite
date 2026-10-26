@@ -179,7 +179,7 @@ When `telegram.enabled` is `true`, the app will start a Telethon client at start
 
 - Only authorized channels listed in `config.yml` are processed.
 - New message text is parsed for `tg://proxy` and `https://t.me/proxy` links.
-- Default channels include `telemtrs`, `telemt_free_proxy`, and `telemtfreeproxy`; configured channels are added to that list.
+- Default channels include `telemtrs`, `telemt_free_proxy`, `telemtfreeproxy`, and `ProxyMTProto`; configured channels are added to that list.
 - Valid proxies are added automatically to the database.
 
 ### Notes

@@ -52,6 +52,12 @@ class TelegramProxyListener:
         async def _on_new_message(event: events.NewMessage.Event) -> None:
             try:
                 text = event.raw_text or ""
+                # Proxy links live in inline URL buttons, not in the post text.
+                for row in getattr(event.message.reply_markup, "rows", []):
+                    for button in row.buttons:
+                        url = getattr(button.type, "url", None)
+                        if url:
+                            text += f"\n{url}"
                 proxies, errors = ProxyLinkParser.parse_text(text)
                 try:
                     chat = await event.get_chat()

@@ -72,6 +72,7 @@ telegram:
     - telemtrs
     - telemt_free_proxy
     - telemtfreeproxy
+    - ProxyMTProto
 
 messages:
   proxy_host_not_allowed: "Proxy host is not allowed"
