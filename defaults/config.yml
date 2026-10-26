@@ -18,6 +18,7 @@ app:
 logging:
   level: INFO
   file: "logs/{time:YYYY-MM-DD}-system.log"
+  access_log: false
   access_file: "logs/{time:YYYY-MM-DD}-access.log"
   rotation: "10 MB"
   retention: "7 days"
