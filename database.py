@@ -267,10 +267,35 @@ class Database:
         sort_by: SortBy = SortBy.LIKES,
         limit: int | None = None,
         offset: int = 0,
+        filters: list[str] | None = None,
     ) -> list[ProxyInDB]:
-        """Get list of proxies with sorting."""
+        """Get list of proxies with sorting and status filtering.
+
+        ``filters`` is a list of enabled categories: ``ok`` (working,
+        non-fallback), ``warn`` (TCP fallback) and ``down`` (failed).
+        Unchecked categories are hidden. Pending (untested) and pinned
+        proxies are always shown regardless of the filter selection.
+        """
         if limit is None:
             limit = config.app.page_size
+        if filters is None:
+            filters = ["ok"]
+        filter_set = set(filters)
+
+        conditions: list[str] = []
+        if "ok" in filter_set:
+            conditions.append("ping_status = 'ok' AND is_fallback = 0")
+        if "warn" in filter_set:
+            conditions.append("is_fallback = 1")
+        if "down" in filter_set:
+            conditions.append("ping_status = 'failed'")
+        # Pending (untested) and pinned proxies are always visible.
+        conditions.append("ping_status = 'pending' OR pinned = 1")
+
+        where_clause = "WHERE " + " OR ".join(
+            f"({condition})" for condition in conditions
+        )
+
         order_clause = {
             # Ensure pinned proxies appear first in Top (likes) view
             SortBy.LIKES: "pinned DESC, likes - dislikes DESC, likes DESC",
@@ -288,7 +313,8 @@ class Database:
             SortBy.NEWEST: "created_at DESC",
         }[sort_by]
         cursor = await self.conn.execute(
-            f"SELECT * FROM proxies ORDER BY {order_clause} LIMIT ? OFFSET ?",
+            f"SELECT * FROM proxies {where_clause} ORDER BY {order_clause} "
+            "LIMIT ? OFFSET ?",
             (limit, offset),
         )
         rows = await cursor.fetchall()

@@ -555,6 +555,34 @@ html.dark .btn-tonal:hover {
   color: var(--md-sys-color-on-secondary-container);
 }
 
+/* Proxy status filter toggles */
+.controls-group {
+  display: inline-flex;
+  gap: 8px;
+}
+
+.filter-btn .icon {
+  width: 16px;
+  height: 16px;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+.filter-btn.active[data-filter="ok"] {
+  background: var(--md-sys-color-success-container);
+  color: var(--md-sys-color-on-success-container);
+}
+
+.filter-btn.active[data-filter="warn"] {
+  background: var(--md-sys-color-warning-container);
+  color: var(--md-sys-color-on-warning-container);
+}
+
+.filter-btn.active[data-filter="down"] {
+  background: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
+}
+
 /* ============================================
    9. Card system
    ============================================ */

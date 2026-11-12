@@ -264,14 +264,32 @@ async def _validate_and_create_proxy(
     return ProxyResponse.model_validate(added), None
 
 
+def _parse_filter(filter: str) -> list[str]:
+    """Parse the ``filter`` query parameter into a list of categories.
+
+    Accepts a comma-separated list of ``ok``, ``warn`` and ``down``.
+    Defaults to ``ok`` when the parameter is empty or invalid.
+    """
+    if not filter:
+        return ["ok"]
+    categories = [part.strip() for part in filter.split(",") if part.strip()]
+    valid = {"ok", "warn", "down"}
+    categories = [c for c in categories if c in valid]
+    return categories or ["ok"]
+
+
 @app.get("/", response_class=HTMLResponse)
 async def index(
     request: Request,
     sort: str = "likes",
+    filter: str = "ok",
 ) -> Response:
     """Main page with proxy list."""
     sort_by = SortBy(sort) if sort in [s.value for s in SortBy] else SortBy.LIKES
-    proxies = await db.get_proxies(sort_by=sort_by, limit=config.app.page_size)
+    filters = _parse_filter(filter)
+    proxies = await db.get_proxies(
+        sort_by=sort_by, limit=config.app.page_size, filters=filters
+    )
     total = await db.get_total_count()
     stats = await db.get_stats()
 
@@ -282,6 +300,7 @@ async def index(
             "proxies": proxies,
             "total": total,
             "sort_by": sort_by.value,
+            "filter": filter,
             "stats": stats,
             # Cache-bust static assets by modification time
             "static_version": int(
@@ -296,12 +315,16 @@ async def list_proxies(
     sort: str = "likes",
     limit: int | None = None,
     offset: int = 0,
+    filter: str = "ok",
 ) -> ProxyListResponse:
     """Get list of proxies."""
     if limit is None:
         limit = config.app.page_size
     sort_by = SortBy(sort) if sort in [s.value for s in SortBy] else SortBy.LIKES
-    proxies = await db.get_proxies(sort_by=sort_by, limit=limit, offset=offset)
+    filters = _parse_filter(filter)
+    proxies = await db.get_proxies(
+        sort_by=sort_by, limit=limit, offset=offset, filters=filters
+    )
     total = await db.get_total_count()
 
     return ProxyListResponse(

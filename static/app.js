@@ -215,6 +215,22 @@ function sortBy(sort) {
   window.location.href = url.toString();
 }
 
+function toggleFilter(category, button) {
+  const url = new URL(window.location);
+  const current = url.searchParams
+    .get("filter")
+    .split(",")
+    .filter(Boolean);
+  const index = current.indexOf(category);
+  if (index === -1) {
+    current.push(category);
+  } else {
+    current.splice(index, 1);
+  }
+  url.searchParams.set("filter", current.join(","));
+  window.location.href = url.toString();
+}
+
 // ============================================
 // Dialog
 // ============================================
