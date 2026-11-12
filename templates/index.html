@@ -155,11 +155,11 @@
               Down
             </button>
           </div>
-          <div class="segmented-buttons">
-          <button
-            class="segment-btn {% if sort_by == 'likes' %}active{% endif %}"
-            onclick="sortBy('likes')"
-          >
+          <div class="segmented-buttons sort-buttons">
+            <button
+              class="segment-btn {% if sort_by == 'likes' %}active{% endif %}"
+              onclick="sortBy('likes')"
+            >
             <svg
               class="icon"
               viewBox="0 0 24 24"
@@ -217,6 +217,7 @@
             New
           </button>
         </div>
+      </div>
       </div>
 
       <!-- Proxy List -->
