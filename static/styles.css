@@ -559,6 +559,11 @@ html.dark .btn-tonal:hover {
 .controls-group {
   display: inline-flex;
   gap: 8px;
+  flex-wrap: wrap;
+}
+
+.filter-buttons .segment-btn {
+  padding: 8px 14px;
 }
 
 .filter-btn .icon {
@@ -581,6 +586,20 @@ html.dark .btn-tonal:hover {
 .filter-btn.active[data-filter="down"] {
   background: var(--md-sys-color-error-container);
   color: var(--md-sys-color-on-error-container);
+}
+
+@media (max-width: 720px) {
+  .controls-bar {
+    justify-content: flex-start;
+    align-items: flex-start;
+  }
+  .controls-group {
+    width: 100%;
+  }
+  .controls-label {
+    width: 100%;
+    margin-bottom: 8px;
+  }
 }
 
 /* ============================================

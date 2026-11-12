@@ -217,10 +217,8 @@ function sortBy(sort) {
 
 function toggleFilter(category, button) {
   const url = new URL(window.location);
-  const current = url.searchParams
-    .get("filter")
-    .split(",")
-    .filter(Boolean);
+  const raw = url.searchParams.get("filter");
+  const current = raw ? raw.split(",").filter(Boolean) : [];
   const index = current.indexOf(category);
   if (index === -1) {
     current.push(category);
