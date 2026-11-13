@@ -1,0 +1,78 @@
+{
+  "title": "MTProto Proxy Hub",
+  "subtitle": "Community-driven proxy list with voting",
+  "repo_banner": "Star our <a href=\"https://github.com/trassert/ProxySite\" target=\"_blank\" rel=\"noreferrer noopener\">repo</a>, this means a lot!",
+  "stats": {
+    "proxies": "proxies",
+    "likes": "likes",
+    "online": "online",
+    "avg_ping": "avg"
+  },
+  "add_proxy_btn": "Add Proxy",
+  "controls": {
+    "found": "proxies found",
+    "filter_ok": "Ok",
+    "filter_warn": "Warn",
+    "filter_down": "Down",
+    "sort_top": "Top",
+    "sort_ping": "Ping",
+    "sort_new": "New"
+  },
+  "filter_titles": {
+    "ok": "Show working proxies",
+    "warn": "Show TCP fallback proxies",
+    "down": "Show dead proxies"
+  },
+  "empty_state": {
+    "title": "No proxies yet",
+    "text": "Be the first to add a proxy!"
+  },
+  "proxy_card": {
+    "pin": "Pin proxy",
+    "unpin": "Unpin proxy",
+    "edit_note": "Edit note",
+    "add_note": "Add note",
+    "open": "Open",
+    "copy_link": "Copy",
+    "qr": "QR",
+    "down": "Down",
+    "pending": "Pending"
+  },
+  "add_dialog": {
+    "title": "Add Proxy",
+    "tab_links": "Paste Links",
+    "tab_manual": "Manual Entry",
+    "labels": {
+      "proxy_type": "Proxy Type",
+      "proxy_links": "Proxy Links",
+      "server": "Server",
+      "port": "Port",
+      "secret": "Secret",
+      "note": "Note (optional)"
+    },
+    "placeholders": {
+      "links": "Paste tg://proxy or t.me/proxy links here...",
+      "server": "proxy.example.com",
+      "port": "443",
+      "secret": "ee0123456789abcdef...",
+      "note": "Provider, location, whitelist..."
+    },
+    "helper": {
+      "secret": "32+ character hex string (with optional \"ee\" prefix for fake-tls)",
+      "bulk_import": "Supports bulk import: paste multiple links at once, even from messy chat logs with timestamps"
+    },
+    "cancel": "Cancel",
+    "add": "Add"
+  },
+  "qr_dialog": {
+    "title": "Proxy QR Code",
+    "hint": "Scan this QR code with Telegram to connect to the proxy",
+    "close": "Close"
+  },
+  "lang_dialog": {
+    "title": "Language"
+  },
+  "tooltips": {
+    "refresh_ping": "Click to refresh"
+  }
+}

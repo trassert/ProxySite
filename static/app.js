@@ -49,6 +49,44 @@ function updateProxyAddressMasks() {
 }
 
 // ============================================
+// Language Switcher
+// ============================================
+
+function openLangDialog() {
+  document.getElementById("lang-dialog").classList.add("open");
+  document.body.style.overflow = "hidden";
+}
+
+async function setLang(lang) {
+  try {
+    const response = await fetch(`./api/lang?lang=${encodeURIComponent(lang)}`, {
+      method: "POST",
+    });
+    const data = await response.json();
+    if (data.success) {
+      // Update active state in dialog
+      document.querySelectorAll(".lang-option").forEach((btn) => {
+        const isActive = btn.dataset.lang === lang;
+        btn.classList.toggle("active", isActive);
+        const icon = btn.querySelector("svg");
+        if (icon) icon.remove();
+        if (isActive) {
+          btn.insertAdjacentHTML(
+            "beforeend",
+            '<svg class="icon" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>'
+          );
+        }
+      });
+      // Reload page to apply new language
+      setTimeout(() => location.reload(), 100);
+    }
+  } catch (error) {
+    console.error("Language change failed:", error);
+    showSnackbar("Failed to change language");
+  }
+}
+
+// ============================================
 // Theme Toggle
 // ============================================
 

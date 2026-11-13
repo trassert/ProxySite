@@ -22,6 +22,7 @@ from fastapi.templating import Jinja2Templates
 from config import config, logger
 from database import db
 from http_logger import RequestLogger
+from i18n import detect_language, get_locale
 from models import (
     NoteUpdate,
     ParseLinksRequest,
@@ -143,6 +144,25 @@ app.mount("/static", StaticFiles(directory=static_path), name="static")
 templates_path = Path(__file__).parent / "templates"
 templates_path.mkdir(exist_ok=True)
 templates = Jinja2Templates(directory=templates_path)
+
+
+@app.middleware("http")
+async def i18n_middleware(request: Request, call_next):
+    """Detect language and add to request state."""
+    request.state.lang = detect_language(request)
+    response = await call_next(request)
+    # Set lang cookie if not present
+    if "lang" not in request.cookies:
+        response.set_cookie(
+            key="lang",
+            value=request.state.lang,
+            max_age=31536000,  # 1 year
+            httponly=False,  # Allow JS access
+            samesite="lax",
+            secure=request.url.scheme == "https",
+        )
+    return response
+
 
 _COOKIE_SECRET_CONTEXT = b"voter-cookie-v1"
 
@@ -302,6 +322,8 @@ async def index(
             "sort_by": sort_by.value,
             "filter": filter,
             "stats": stats,
+            "t": get_locale(getattr(request.state, "lang", "en")),
+            "current_lang": getattr(request.state, "lang", "en"),
             # Cache-bust static assets by modification time
             "static_version": int(
                 (Path(__file__).parent / "static" / "app.js").stat().st_mtime
@@ -474,6 +496,25 @@ async def get_stats() -> StatsResponse:
     """Get aggregate statistics."""
     stats = await db.get_stats()
     return StatsResponse(**stats)
+
+
+@app.post("/api/lang")
+async def set_language(request: Request, response: Response, lang: str) -> dict:
+    """Set user language preference."""
+    from i18n import SUPPORTED_LANGUAGES
+
+    if lang not in SUPPORTED_LANGUAGES:
+        return {"success": False, "error": "Unsupported language"}
+
+    response.set_cookie(
+        key="lang",
+        value=lang,
+        max_age=31536000,
+        httponly=False,
+        samesite="lax",
+        secure=request.url.scheme == "https",
+    )
+    return {"success": True, "lang": lang}
 
 
 @app.post("/api/add-proxy")

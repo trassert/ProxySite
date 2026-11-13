@@ -299,11 +299,52 @@ select:focus-visible,
   margin: 0 auto;
 }
 
-/* Theme toggle */
-.theme-toggle {
+/* Header controls */
+.header-controls {
   position: absolute;
   top: 0;
   right: 0;
+  display: flex;
+  gap: 8px;
+}
+
+/* Language toggle */
+.lang-toggle {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--md-sys-shape-corner-full);
+  border: none;
+  background: var(--md-sys-color-surface-container);
+  color: var(--md-sys-color-on-surface-variant);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background var(--md-sys-motion-duration-medium)
+      var(--md-sys-motion-easing-standard),
+    color var(--md-sys-motion-duration-medium)
+      var(--md-sys-motion-easing-standard),
+    transform var(--md-sys-motion-duration-medium)
+      var(--md-sys-motion-easing-expressive);
+}
+
+.lang-toggle:hover {
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
+}
+
+.lang-toggle:active {
+  transform: scale(0.92);
+}
+
+.lang-toggle svg {
+  width: 24px;
+  height: 24px;
+}
+
+/* Theme toggle */
+.theme-toggle {
   width: 48px;
   height: 48px;
   border-radius: var(--md-sys-shape-corner-full);
@@ -351,6 +392,72 @@ html.dark .theme-toggle .icon-sun {
 
 html.dark .theme-toggle .icon-moon {
   display: none;
+}
+
+/* Language dialog */
+.lang-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 16px;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-corner-large);
+  background: var(--md-sys-color-surface-container);
+  color: var(--md-sys-color-on-surface);
+  cursor: pointer;
+  transition:
+    background var(--md-sys-motion-duration-short)
+      var(--md-sys-motion-easing-standard),
+    border-color var(--md-sys-motion-duration-short)
+      var(--md-sys-motion-easing-standard);
+  text-align: left;
+}
+
+.lang-option:hover {
+  background: var(--md-sys-color-surface-container-high);
+  border-color: var(--md-sys-color-outline);
+}
+
+.lang-option.active {
+  border-color: var(--md-sys-color-primary);
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+}
+
+.lang-option.active svg {
+  display: block !important;
+}
+
+.lang-option svg {
+  display: none;
+  width: 20px;
+  height: 20px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.lang-flag {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.lang-name {
+  font: var(--md-sys-typescale-body-large);
+}
+
+/* Language dialog - compact */
+.dialog-backdrop .dialog.lang-dialog {
+  width: auto;
+  min-width: 260px;
+  max-width: 320px;
+  padding: 20px;
+}
+
+.lang-dialog .dialog-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 /* Repo banner */

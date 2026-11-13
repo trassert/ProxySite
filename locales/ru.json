@@ -1,0 +1,78 @@
+{
+  "title": "MTProto Proxy Hub",
+  "subtitle": "Сообщество прокси с голосованием",
+  "repo_banner": "Поставьте звезду нашему <a href=\"https://github.com/trassert/ProxySite\" target=\"_blank\" rel=\"noreferrer noopener\">репозиторию</a>, это очень важно!",
+  "stats": {
+    "proxies": "прокси",
+    "likes": "лайков",
+    "online": "онлайн",
+    "avg_ping": "ср. пинг"
+  },
+  "add_proxy_btn": "Добавить прокси",
+  "controls": {
+    "found": "прокси найдено",
+    "filter_ok": "В сети",
+    "filter_warn": "Сбой",
+    "filter_down": "Офлайн",
+    "sort_top": "Топ",
+    "sort_ping": "Пинг",
+    "sort_new": "Новые"
+  },
+  "filter_titles": {
+    "ok": "Показать работающие прокси",
+    "warn": "Показать TCP fallback прокси",
+    "down": "Показать неработающие прокси"
+  },
+  "empty_state": {
+    "title": "Пока нет прокси",
+    "text": "Добавьте первую прокси!"
+  },
+  "proxy_card": {
+    "pin": "Закрепить прокси",
+    "unpin": "Открепить прокси",
+    "edit_note": "Изменить заметку",
+    "add_note": "Добавить заметку",
+    "open": "Открыть",
+    "copy_link": "Копировать",
+    "qr": "QR",
+    "down": "Офлайн",
+    "pending": "Ожидание"
+  },
+  "add_dialog": {
+    "title": "Добавить прокси",
+    "tab_links": "Вставить ссылки",
+    "tab_manual": "Вручную",
+    "labels": {
+      "proxy_type": "Тип прокси",
+      "proxy_links": "Ссылки на прокси",
+      "server": "Сервер",
+      "port": "Порт",
+      "secret": "Секрет",
+      "note": "Заметка (необязательно)"
+    },
+    "placeholders": {
+      "links": "Вставьте tg://proxy или t.me/proxy ссылки сюда...",
+      "server": "proxy.example.com",
+      "port": "443",
+      "secret": "ee0123456789abcdef...",
+      "note": "Провайдер, локация, вайтлист..."
+    },
+    "helper": {
+      "secret": "16+ символов hex строки (с опциональным \"ee\" префиксом для fake-tls)",
+      "bulk_import": "Поддерживает массовый импорт: вставьте несколько ссылок сразу, даже из чатов с временными метками"
+    },
+    "cancel": "Отмена",
+    "add": "Добавить"
+  },
+  "qr_dialog": {
+    "title": "QR код прокси",
+    "hint": "Отсканируйте этот QR код через Telegram для подключения к прокси",
+    "close": "Закрыть"
+  },
+  "lang_dialog": {
+    "title": "Язык"
+  },
+  "tooltips": {
+    "refresh_ping": "Нажмите для обновления"
+  }
+}
