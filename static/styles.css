@@ -800,8 +800,8 @@ html.dark .btn-tonal:hover {
 }
 
 .proxy-header {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr auto;
   align-items: flex-start;
   gap: 16px;
   margin-bottom: 16px;
@@ -893,11 +893,10 @@ html.dark .btn-tonal:hover {
 }
 
 .proxy-actions {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr auto;
   align-items: center;
   gap: 12px;
-  flex-wrap: wrap;
 }
 
 /* --- Ping badge --- */
@@ -1564,8 +1563,7 @@ input[type="number"] {
   }
 
   .proxy-actions {
-    flex-direction: column;
-    align-items: stretch;
+    grid-template-columns: 1fr;
     gap: 12px;
   }
 
