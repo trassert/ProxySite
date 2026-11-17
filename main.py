@@ -62,9 +62,7 @@ async def cleanup_worker() -> None:
                 )
                 cache_store.invalidate("proxies")
 
-            failed = await db.delete_old_failed_proxies(
-                days=config.workers.failed_days
-            )
+            failed = await db.delete_old_failed_proxies(days=config.workers.failed_days)
             if failed:
                 logger.info(
                     "Cleanup: removed {count} proxy(ies) failed for > {days} days",
@@ -746,7 +744,9 @@ if __name__ == "__main__":
     logger.info(
         "Telegram auto-scraper: {status} | Channels: {channels}",
         status="ENABLED" if config.telegram.enabled else "DISABLED",
-        channels=", ".join(config.telegram.channels) if config.telegram.enabled else "-",
+        channels=", ".join(config.telegram.channels)
+        if config.telegram.enabled
+        else "-",
     )
 
     uvicorn.run(
