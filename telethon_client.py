@@ -27,11 +27,11 @@ class TelegramProxyListener:
     @classmethod
     async def start(cls) -> None:
         if cls._started:
-            logger.info("Telegram listener already running")
+            logger.info("Auto-scraper already running")
             return
 
         if not config.telegram.enabled:
-            logger.info("Telegram listener disabled in config")
+            logger.info("Auto-scraper disabled in config")
             return
 
         if not config.telegram.api_id or not config.telegram.api_hash:
@@ -71,6 +71,8 @@ class TelegramProxyListener:
                 )
                 if proxies:
                     added = 0
+                    duplicates = 0
+                    failed = 0
                     for proxy in proxies:
                         check = await PingChecker.check(
                             proxy.server,
@@ -79,8 +81,9 @@ class TelegramProxyListener:
                             proxy.proxy_type,
                         )
                         if check.status == PingStatus.FAILED:
+                            failed += 1
                             logger.warning(
-                                "Proxy {address} failed checks from {source}",
+                                "Proxy {address} failed ping check from {source}",
                                 address=f"{proxy.server}:{proxy.port}",
                                 source=source,
                             )
@@ -93,11 +96,15 @@ class TelegramProxyListener:
                                 address=f"{proxy.server}:{proxy.port}",
                                 source=source,
                             )
+                        else:
+                            duplicates += 1
                     logger.info(
-                        "Imported {count}/{total} proxies from {source}",
-                        count=added,
-                        total=len(proxies),
+                        "Auto-scraper import from {source}: +{added} new, {duplicates} dup, {failed} failed, {total} links",
                         source=source,
+                        added=added,
+                        duplicates=duplicates,
+                        failed=failed,
+                        total=len(proxies),
                     )
                 if errors:
                     logger.warning(
@@ -112,7 +119,11 @@ class TelegramProxyListener:
 
         await cls.client.start()
         cls._started = True
-        logger.info("Telegram proxy listener started")
+        logger.info(
+            "Auto-scraper started: monitoring {channels} channel(s) via session {session}",
+            channels=", ".join(config.telegram.channels),
+            session=str(session_file),
+        )
 
     @classmethod
     async def stop(cls) -> None:
@@ -121,4 +132,4 @@ class TelegramProxyListener:
 
         await cls.client.disconnect()
         cls._started = False
-        logger.info("Telegram proxy listener stopped")
+        logger.info("Auto-scraper stopped")

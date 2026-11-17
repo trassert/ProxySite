@@ -19,7 +19,7 @@ from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from config import config, logger
+from config import CONFIG_PATH, config, logger
 from database import db
 from http_logger import RequestLogger
 from i18n import detect_language, get_locale
@@ -51,25 +51,30 @@ async def cleanup_worker() -> None:
     """Background worker that removes disliked and old failed proxies periodically."""
     while True:
         try:
-            deleted_count = await db.delete_most_disliked(
+            disliked = await db.delete_most_disliked(
                 min_dislikes=config.workers.min_dislikes
             )
-            if deleted_count:
+            if disliked:
                 logger.info(
-                    "Deleted {count} disliked proxies",
-                    count=deleted_count,
+                    "Cleanup: removed {count} proxy(ies) with >= {min_dislikes} dislikes",
+                    count=disliked,
+                    min_dislikes=config.workers.min_dislikes,
                 )
                 cache_store.invalidate("proxies")
 
-            deleted_count = await db.delete_old_failed_proxies(
+            failed = await db.delete_old_failed_proxies(
                 days=config.workers.failed_days
             )
-            if deleted_count:
+            if failed:
                 logger.info(
-                    "Removed {count} old failed proxies",
-                    count=deleted_count,
+                    "Cleanup: removed {count} proxy(ies) failed for > {days} days",
+                    count=failed,
+                    days=config.workers.failed_days,
                 )
                 cache_store.invalidate("proxies")
+
+            if not disliked and not failed:
+                logger.debug("Cleanup cycle: nothing to remove")
         except Exception as exc:
             logger.exception("Cleanup worker failed: {error}", error=exc)
         await asyncio.sleep(config.workers.cleanup_interval_seconds)
@@ -77,10 +82,16 @@ async def cleanup_worker() -> None:
 
 async def ping_worker() -> None:
     """Background worker that checks all proxies periodically."""
+    import time
+
     while True:
         try:
             proxies = await db.get_all_for_ping()
             checked = 0
+            ok = 0
+            warn = 0
+            down = 0
+            cycle_start = time.monotonic()
             for proxy_id, server, port, secret, proxy_type in proxies:
                 result = await PingChecker.check(server, port, secret, proxy_type)
                 await db.update_ping(
@@ -92,9 +103,23 @@ async def ping_worker() -> None:
                     is_fallback=result.is_fallback,
                     tcp_ping_ms=result.tcp_ping_ms,
                 )
+                if result.status == PingStatus.OK:
+                    ok += 1
+                elif result.status == PingStatus.WARNING:
+                    warn += 1
+                else:
+                    down += 1
                 checked += 1
                 await asyncio.sleep(config.workers.ping_delay_seconds)
-            logger.info("Ping cycle completed: {count} proxies checked", count=checked)
+            cycle_duration = time.monotonic() - cycle_start
+            logger.info(
+                "Ping cycle done: {count} checked ({ok} ok, {warn} warn, {down} down) in {duration:.1f}s",
+                count=checked,
+                ok=ok,
+                warn=warn,
+                down=down,
+                duration=cycle_duration,
+            )
         except Exception as exc:
             logger.exception("Ping worker failed: {error}", error=exc)
 
@@ -113,7 +138,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     if config.telegram.enabled:
         await TelegramProxyListener.start()
     else:
-        logger.info("Telegram proxy listener is disabled in config")
+        logger.info("Auto-scraper (Telegram listener) is disabled in config")
 
     yield
 
@@ -668,12 +693,66 @@ async def add_proxy_form(
 
 
 if __name__ == "__main__":
+    import socket
+
     import uvicorn
+
+    def _local_ip() -> str:
+        """Best-effort detection of the machine's primary outbound IP."""
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+                s.connect(("8.8.8.8", 80))
+                return s.getsockname()[0]
+        except OSError:
+            return "127.0.0.1"
+
+    def _bind_urls(host: str, port: int) -> list[str]:
+        """Build the URLs the app is reachable at, given the bind host."""
+        if host in ("0.0.0.0", "::"):
+            # Bound to all interfaces: prefer the machine IP, fall back to localhost.
+            ip = _local_ip()
+            return [f"http://{ip}:{port}", f"http://localhost:{port}"]
+        if host in ("127.0.0.1", "localhost", "::1"):
+            return [f"http://localhost:{port}"]
+        return [f"http://{host}:{port}"]
+
+    bind_host = config.app.host
+    bind_port = config.app.port
+    urls = _bind_urls(bind_host, bind_port)
+
+    logger.info(
+        "Starting {title} v{version} (debug={debug})",
+        title=config.app.title,
+        version=config.app.version,
+        debug=config.app.debug,
+    )
+    for url in urls:
+        logger.info("Listening at {url}", url=url)
+    logger.info(
+        "Bind: {host}:{port} | Config: {config_path} | DB: {db_path}",
+        host=bind_host,
+        port=bind_port,
+        config_path=str(CONFIG_PATH),
+        db_path=str(config.app.database_path),
+    )
+    logger.info(
+        "Workers: ping every {ping_interval}s (timeout {ping_timeout}s, ok<{ok_threshold}ms) | cleanup every {cleanup_interval}s | page_size {page_size}",
+        ping_interval=config.workers.ping_interval_seconds,
+        ping_timeout=config.ping.timeout_seconds,
+        ok_threshold=config.ping.ok_threshold_ms,
+        cleanup_interval=config.workers.cleanup_interval_seconds,
+        page_size=config.app.page_size,
+    )
+    logger.info(
+        "Telegram auto-scraper: {status} | Channels: {channels}",
+        status="ENABLED" if config.telegram.enabled else "DISABLED",
+        channels=", ".join(config.telegram.channels) if config.telegram.enabled else "-",
+    )
 
     uvicorn.run(
         app,
-        host=config.app.host,
-        port=config.app.port,
+        host=bind_host,
+        port=bind_port,
         access_log=False,  # Disable default Uvicorn access logs
         log_config=None,  # Use our custom logging config from config.py
     )
