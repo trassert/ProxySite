@@ -4,6 +4,7 @@ Includes rate limiting and caching.
 """
 
 import time
+from collections import OrderedDict, deque
 from collections.abc import Callable
 from typing import Any
 
@@ -19,11 +20,13 @@ class RateLimiter(BaseHTTPMiddleware):
     """
     Token bucket rate limiter.
     Prevents API abuse and protects against DDoS.
+    Uses bounded per-IP deques to avoid unbounded memory growth.
     """
 
     def __init__(self, app):
         super().__init__(app)
-        self.requests: dict = {}  # {ip: [(timestamp, path)]}
+        self.requests: dict[str, deque] = {}  # {ip: deque of timestamps}
+        self.max_clients = config.rate_limit.max_clients
 
     @staticmethod
     def _limits() -> dict[str, int]:
@@ -44,8 +47,7 @@ class RateLimiter(BaseHTTPMiddleware):
         client_ip = request.client.host if request.client else "unknown"
         path = request.url.path
 
-        # Find the most specific matching limit (longest prefix wins, so the
-        # result does not depend on the order of the limits).
+        # Find the most specific matching limit (longest prefix wins).
         limit = None
         for prefix, rate in self._limits().items():
             if path.startswith(prefix) and (
@@ -60,27 +62,21 @@ class RateLimiter(BaseHTTPMiddleware):
         current_time = time.time()
         window_start = current_time - config.rate_limit.window_seconds
 
-        # Initialize or clean up
+        # Initialize or reuse bounded deque per IP
         if client_ip not in self.requests:
-            if len(self.requests) >= config.rate_limit.max_clients:
-                oldest_client = min(
-                    self.requests,
-                    key=lambda client: (
-                        self.requests[client][-1][0] if self.requests[client] else 0
-                    ),
-                )
-                del self.requests[oldest_client]
-            self.requests[client_ip] = []
+            # Evict oldest IP when at capacity (O(1) vs O(N) min scan)
+            if len(self.requests) >= self.max_clients:
+                self.requests.pop(next(iter(self.requests)))
+            self.requests[client_ip] = deque(maxlen=256)
 
-        # Remove old requests
-        self.requests[client_ip] = [
-            (ts, p) for ts, p in self.requests[client_ip] if ts > window_start
-        ]
+        dq = self.requests[client_ip]
 
-        # Check limit for this path
-        path_requests = len([p for _, p in self.requests[client_ip] if p == path])
+        # Remove old requests outside the window
+        while dq and dq[0] <= window_start:
+            dq.popleft()
 
-        if path_requests >= limit:
+        # Check limit
+        if len(dq) >= limit:
             logger.warning(
                 "Rate limit exceeded for {client} on {path}",
                 client=client_ip,
@@ -91,31 +87,36 @@ class RateLimiter(BaseHTTPMiddleware):
                 status_code=HTTP_429_TOO_MANY_REQUESTS,
             )
 
-        # Record request
-        self.requests[client_ip].append((current_time, path))
-
+        dq.append(current_time)
         return await call_next(request)
 
 
 class CacheStore:
-    """Simple in-memory cache with TTL."""
+    """LRU in-memory cache with size limit and TTL."""
 
-    def __init__(self):
-        self.cache: dict = {}  # {key: (value, expires_at)}
+    def __init__(self, maxsize: int = 512):
+        self.cache: OrderedDict = OrderedDict()
+        self.maxsize = maxsize
 
     def get(self, key: str) -> Any | None:
         """Get value from cache if not expired."""
         if key in self.cache:
             value, expires_at = self.cache[key]
             if time.time() < expires_at:
+                # Move to end (most recently used)
+                self.cache.move_to_end(key)
                 return value
             del self.cache[key]
         return None
 
     def set(self, key: str, value: Any, ttl_seconds: int | None = None) -> None:
-        """Store value with TTL."""
+        """Store value with TTL, evicting LRU entry if full."""
         if ttl_seconds is None:
             ttl_seconds = config.cache.ttl_seconds
+        if key in self.cache:
+            self.cache.move_to_end(key)
+        elif len(self.cache) >= self.maxsize:
+            self.cache.popitem(last=False)
         self.cache[key] = (value, time.time() + ttl_seconds)
 
     def invalidate(self, pattern: str = "") -> None:
@@ -123,8 +124,10 @@ class CacheStore:
         if not pattern:
             self.cache.clear()
         else:
-            self.cache = {k: v for k, v in self.cache.items() if pattern not in k}
+            to_delete = [k for k in self.cache if pattern in k]
+            for k in to_delete:
+                del self.cache[k]
 
 
-# Global cache instance
-cache_store = CacheStore()
+# Global cache instance with reasonable LRU capacity
+cache_store = CacheStore(maxsize=512)

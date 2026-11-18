@@ -78,6 +78,20 @@ async def cleanup_worker() -> None:
         await asyncio.sleep(config.workers.cleanup_interval_seconds)
 
 
+async def _check_single_proxy(proxy_id, server, port, secret, proxy_type):
+    """Helper to check one proxy."""
+    result = await PingChecker.check(server, port, secret, proxy_type)
+    await db.update_ping(
+        proxy_id=proxy_id,
+        ping_ms=result.ping_ms,
+        ping_status=result.status,
+        tcp_ok=result.tcp_ok,
+        dns_ok=result.dns_ok,
+        is_fallback=result.is_fallback,
+        tcp_ping_ms=result.tcp_ping_ms,
+    )
+    return result
+
 async def ping_worker() -> None:
     """Background worker that checks all proxies periodically."""
     import time
@@ -90,25 +104,27 @@ async def ping_worker() -> None:
             warn = 0
             down = 0
             cycle_start = time.monotonic()
-            for proxy_id, server, port, secret, proxy_type in proxies:
-                result = await PingChecker.check(server, port, secret, proxy_type)
-                await db.update_ping(
-                    proxy_id=proxy_id,
-                    ping_ms=result.ping_ms,
-                    ping_status=result.status,
-                    tcp_ok=result.tcp_ok,
-                    dns_ok=result.dns_ok,
-                    is_fallback=result.is_fallback,
-                    tcp_ping_ms=result.tcp_ping_ms,
-                )
-                if result.status == PingStatus.OK:
-                    ok += 1
-                elif result.status == PingStatus.WARNING:
-                    warn += 1
-                else:
-                    down += 1
-                checked += 1
+
+            # Process in batches of 10 to avoid overloading network/file handles
+            batch_size = 10
+            for i in range(0, len(proxies), batch_size):
+                batch = proxies[i : i + batch_size]
+                tasks = [
+                    _check_single_proxy(proxy_id, server, port, secret, proxy_type)
+                    for proxy_id, server, port, secret, proxy_type in batch
+                ]
+                results = await asyncio.gather(*tasks)
+
+                for result in results:
+                    if result.status == PingStatus.OK:
+                        ok += 1
+                    elif result.status == PingStatus.WARNING:
+                        warn += 1
+                    else:
+                        down += 1
+                    checked += 1
                 await asyncio.sleep(config.workers.ping_delay_seconds)
+
             cycle_duration = time.monotonic() - cycle_start
             logger.info(
                 "Ping cycle done: {count} checked ({ok} ok, {warn} warn, {down} down) in {duration:.1f}s",
@@ -321,6 +337,9 @@ def _parse_filter(filter: str) -> list[str]:
     return categories or ["ok"]
 
 
+# Calculate static version once at startup
+STATIC_VERSION = int((Path(__file__).parent / "static" / "app.js").stat().st_mtime)
+
 @app.get("/", response_class=HTMLResponse)
 async def index(
     request: Request,
@@ -330,11 +349,18 @@ async def index(
     """Main page with proxy list."""
     sort_by = SortBy(sort) if sort in [s.value for s in SortBy] else SortBy.LIKES
     filters = _parse_filter(filter)
-    proxies = await db.get_proxies(
-        sort_by=sort_by, limit=config.app.page_size, filters=filters
-    )
-    total = await db.get_total_count()
-    stats = await db.get_stats()
+    cache_key = f"index:{sort}:{filter}"
+
+    cached = cache_store.get(cache_key)
+    if cached is not None:
+        proxies, total, stats = cached
+    else:
+        proxies = await db.get_proxies(
+            sort_by=sort_by, limit=config.app.page_size, filters=filters
+        )
+        total = await db.get_total_count()
+        stats = await db.get_stats()
+        cache_store.set(cache_key, (proxies, total, stats))
 
     return templates.TemplateResponse(
         request,
@@ -347,10 +373,9 @@ async def index(
             "stats": stats,
             "t": get_locale(getattr(request.state, "lang", "en")),
             "current_lang": getattr(request.state, "lang", "en"),
-            # Cache-bust static assets by modification time
-            "static_version": int(
-                (Path(__file__).parent / "static" / "app.js").stat().st_mtime
-            ),
+            "static_version": STATIC_VERSION,
+        },
+    )
         },
     )
 
@@ -367,10 +392,17 @@ async def list_proxies(
         limit = config.app.page_size
     sort_by = SortBy(sort) if sort in [s.value for s in SortBy] else SortBy.LIKES
     filters = _parse_filter(filter)
-    proxies = await db.get_proxies(
-        sort_by=sort_by, limit=limit, offset=offset, filters=filters
-    )
-    total = await db.get_total_count()
+    cache_key = f"proxies:{sort}:{limit}:{offset}:{filter}"
+
+    cached = cache_store.get(cache_key)
+    if cached is not None:
+        proxies, total = cached
+    else:
+        proxies = await db.get_proxies(
+            sort_by=sort_by, limit=limit, offset=offset, filters=filters
+        )
+        total = await db.get_total_count()
+        cache_store.set(cache_key, (proxies, total))
 
     return ProxyListResponse(
         proxies=[ProxyResponse.model_validate(p) for p in proxies],
