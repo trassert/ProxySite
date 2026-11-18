@@ -396,14 +396,14 @@ class Database:
         row = await cursor.fetchone()
         return (row["likes"], row["dislikes"], current_vote) if row else None
 
-    async def get_vote(self, proxy_id: int, voter_id: str) -> str | None:
-        """Get user's vote for a proxy."""
+    async def get_all_user_votes(self, voter_id: str) -> dict[int, str]:
+        """Get all user's votes: {proxy_id: vote_type}."""
         cursor = await self.conn.execute(
-            "SELECT vote_type FROM votes WHERE proxy_id = ? AND voter_id = ?",
-            (proxy_id, voter_id),
+            "SELECT proxy_id, vote_type FROM votes WHERE voter_id = ?",
+            (voter_id,),
         )
-        row = await cursor.fetchone()
-        return row["vote_type"] if row else None
+        rows = await cursor.fetchall()
+        return {row["proxy_id"]: row["vote_type"] for row in rows}
 
     async def delete_most_disliked(self, min_dislikes: int | None = None) -> int:
         """

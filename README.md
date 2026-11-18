@@ -22,8 +22,6 @@ Community-driven Telegram proxy aggregator with real-time ping monitoring, votin
 - **Responsive Design**: Material Design 3 UI with dark/light theme support
 - **Useful logging**: System logs use `logs/YYYY-MM-DD-system.log`; HTTP access logs use `logs/YYYY-MM-DD-access.log`. Secrets and full proxy links are excluded from log messages.
 
-## How It Works
-
 ### Ping Checking
 
 MTProto entries use the **MTProto Proxy-get** protocol (not simple TCP connect) to accurately check proxy availability. WEB entries use the HTTPS bridge GET endpoint and fall back to a TCP connect check when the bridge request fails.
@@ -92,8 +90,9 @@ Parse and add multiple proxies
 Vote on a proxy
 - Body: `{ "proxy_id": ..., "vote_type": "like"|"dislike" }`
 
-### GET `/api/vote/{proxy_id}`
-Get current user's vote for a proxy
+### GET `/api/votes`
+Get all current user's votes in one request (used during page load)
+- Returns: `{ "votes": { "123": "like", "456": "dislike" } }`
 
 ### GET `/api/stats`
 Get aggregate statistics

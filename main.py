@@ -532,16 +532,15 @@ async def update_proxy_note(proxy_id: int, data: NoteUpdate) -> dict:
     return {"success": True, "note": data.note}
 
 
-@app.get("/api/vote/{proxy_id}")
-async def get_user_vote(
-    proxy_id: int,
+@app.get("/api/votes")
+async def get_user_votes(
     request: Request,
     response: Response,
 ) -> dict:
-    """Get user's vote for a proxy."""
+    """Get all user's votes for the current session."""
     voter_id = get_voter_id(request, response)
-    vote = await db.get_vote(proxy_id, voter_id)
-    return {"vote": vote}
+    votes = await db.get_all_user_votes(voter_id)
+    return {"votes": votes}
 
 
 @app.get("/api/stats", response_model=StatsResponse)

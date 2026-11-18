@@ -344,25 +344,20 @@ function toggleProxyType() {
 // ============================================
 
 async function loadUserVotes() {
-  const cards = document.querySelectorAll(".proxy-card");
-
-  for (const card of cards) {
-    const proxyId = card.dataset.proxyId;
-    if (!proxyId) continue;
-
-    try {
-      const response = await fetch(`./api/vote/${proxyId}`);
-      const data = await response.json();
-
-      if (data.vote) {
-        const btn = card.querySelector(`[data-vote="${data.vote}"]`);
-        if (btn) {
-          btn.classList.add("active");
-        }
+  try {
+    const response = await fetch("./api/votes");
+    const data = await response.json();
+    
+    if (data.votes) {
+      for (const [proxyId, voteType] of Object.entries(data.votes)) {
+        const btn = document.querySelector(
+          `.proxy-card[data-proxy-id="${proxyId}"] [data-vote="${voteType}"]`
+        );
+        if (btn) btn.classList.add("active");
       }
-    } catch (error) {
-      // Ignore errors for individual vote loading
     }
+  } catch (error) {
+    console.error("Failed to load votes:", error);
   }
 }
 
