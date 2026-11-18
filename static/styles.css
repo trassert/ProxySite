@@ -1444,6 +1444,19 @@ input[type="number"] {
       var(--md-sys-motion-easing-standard);
 }
 
+/* Fix snackbar colors for inverse theme logic:
+   In Material Design 3, inverse surface is opposite of the current theme surface.
+   To match the theme, we should use standard surface variables if inverse looks wrong. */
+html.dark .snackbar {
+  background: var(--md-sys-color-surface-container-highest);
+  color: var(--md-sys-color-on-surface);
+}
+
+html:not(.dark) .snackbar {
+  background: var(--md-sys-color-inverse-surface);
+  color: var(--md-sys-color-inverse-on-surface);
+}
+
 .snackbar.show {
   transform: translateX(-50%) translateY(0);
   opacity: 1;
