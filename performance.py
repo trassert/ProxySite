@@ -80,7 +80,7 @@ class RateLimiter(BaseHTTPMiddleware):
         if len(dq) >= limit:
             # Throttle logging: only log if we haven't logged for this IP recently
             # or just log once per limit event.
-            if len(dq) == limit: # Log only on the first violation
+            if len(dq) == limit:  # Log only on the first violation
                 logger.warning(
                     "Rate limit exceeded for {client} on {path}",
                     client=client_ip,
