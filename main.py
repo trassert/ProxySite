@@ -92,6 +92,7 @@ async def _check_single_proxy(proxy_id, server, port, secret, proxy_type):
     )
     return result
 
+
 async def ping_worker() -> None:
     """Background worker that checks all proxies periodically."""
     import time
@@ -339,6 +340,7 @@ def _parse_filter(filter: str) -> list[str]:
 
 # Calculate static version once at startup
 STATIC_VERSION = int((Path(__file__).parent / "static" / "app.js").stat().st_mtime)
+
 
 @app.get("/", response_class=HTMLResponse)
 async def index(
