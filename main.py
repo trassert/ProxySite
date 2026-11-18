@@ -376,8 +376,6 @@ async def index(
             "static_version": STATIC_VERSION,
         },
     )
-        },
-    )
 
 
 @app.get("/api/proxies", response_model=ProxyListResponse)
