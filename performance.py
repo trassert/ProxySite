@@ -3,6 +3,7 @@ Performance optimizations for high-traffic scenarios.
 Includes rate limiting and caching.
 """
 
+import json
 import time
 from collections import OrderedDict, deque
 from collections.abc import Callable
@@ -83,8 +84,9 @@ class RateLimiter(BaseHTTPMiddleware):
                 path=path,
             )
             return Response(
-                content=config.messages.rate_limit_exceeded,
+                content=json.dumps({"detail": config.messages.rate_limit_exceeded}),
                 status_code=HTTP_429_TOO_MANY_REQUESTS,
+                media_type="application/json",
             )
 
         dq.append(current_time)

@@ -493,16 +493,12 @@ async def vote(
 
     likes, dislikes, current_vote = result
 
-    proxies = await db.get_proxies(
-        sort_by=SortBy.LIKES, limit=config.app.page_size, offset=0
-    )
-    new_position = next((i for i, p in enumerate(proxies) if p.id == data.proxy_id), -1)
-
+    # Position is calculated client-side after vote; no need for extra DB query
     return VoteResponse(
         success=True,
         likes=likes,
         dislikes=dislikes,
-        position=new_position,
+        position=-1,
         vote=current_vote,
     )
 
