@@ -107,11 +107,35 @@ function toggleTheme() {
 // Snackbar
 // ============================================
 
+function t(key, fallback = key) {
+  if (!window.translations) return fallback;
+  const keys = key.split(".");
+  let result = window.translations;
+  for (const k of keys) {
+    if (result[k] === undefined) return fallback;
+    result = result[k];
+  }
+  return result;
+}
+
 const snackbarQueue = [];
 let snackbarActive = false;
+const SNACKBAR_MAX_QUEUE = 3;
 
-function showSnackbar(message, duration = 3000) {
-  snackbarQueue.push({ message, duration });
+function showSnackbar(message, duration = 2000) {
+  // Try to translate if message matches a known key path, otherwise use as raw string
+  const translatedMessage = t(message, message);
+  
+  // Skip duplicate of the last queued item
+  const lastItem = snackbarQueue[snackbarQueue.length - 1];
+  if (lastItem && lastItem.message === translatedMessage) return;
+
+  // Trim excess queue
+  if (snackbarQueue.length >= SNACKBAR_MAX_QUEUE) {
+    snackbarQueue.splice(0, snackbarQueue.length - SNACKBAR_MAX_QUEUE + 1);
+  }
+
+  snackbarQueue.push({ message: translatedMessage, duration });
   if (snackbarActive) return;
 
   snackbarActive = true;
@@ -121,7 +145,6 @@ function showSnackbar(message, duration = 3000) {
   snackbar.textContent = item.message;
   document.body.appendChild(snackbar);
 
-  // Trigger animation
   requestAnimationFrame(() => {
     snackbar.classList.add("show");
   });
@@ -179,11 +202,11 @@ async function vote(proxyId, voteType) {
       dislikeBtn.classList.toggle("active", data.vote === "dislike");
 
       if (data.vote === "like") {
-        showSnackbar("Liked!");
+        showSnackbar("snackbars.liked");
       } else if (data.vote === "dislike") {
-        showSnackbar("Disliked!");
+        showSnackbar("snackbars.disliked");
       } else {
-        showSnackbar("Vote removed");
+        showSnackbar("snackbars.vote_removed");
       }
 
       // Re-sort by likes immediately - move card to its new position
@@ -197,11 +220,11 @@ async function vote(proxyId, voteType) {
         await moveProxyCardToPosition(proxyId, data.position);
       }
     } else {
-      showSnackbar("Error: " + (data.detail || "Unknown error"));
+      showSnackbar(formatApiError(data.detail, t("snackbars.unknown_error")));
     }
   } catch (error) {
     console.error("Vote error:", error);
-    showSnackbar("Network error");
+    showSnackbar("snackbars.network_error");
   } finally {
     btn.classList.remove("loading");
   }

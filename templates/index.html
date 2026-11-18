@@ -25,6 +25,7 @@
     />
     <link rel="stylesheet" href="./static/styles.css?v={{ static_version }}" />
     <script>
+      window.translations = {{ t | tojson }};
       // Apply saved theme immediately to prevent flash
       if (localStorage.getItem("theme") === "light") {
         document.documentElement.classList.remove("dark");

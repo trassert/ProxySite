@@ -8,6 +8,14 @@
     "online": "онлайн",
     "avg_ping": "ср. пинг"
   },
+  "snackbars": {
+    "liked": "Лайкнуто!",
+    "disliked": "Дизлайкнуто!",
+    "vote_removed": "Голос убран",
+    "network_error": "Ошибка сети",
+    "rate_limited": "Слишком много запросов",
+    "unknown_error": "Неизвестная ошибка"
+  },
   "add_proxy_btn": "Добавить прокси",
   "controls": {
     "found": "прокси найдено",

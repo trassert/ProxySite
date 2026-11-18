@@ -8,6 +8,14 @@
     "online": "online",
     "avg_ping": "avg"
   },
+  "snackbars": {
+    "liked": "Liked!",
+    "disliked": "Disliked!",
+    "vote_removed": "Vote removed",
+    "network_error": "Network error",
+    "rate_limited": "Too many requests",
+    "unknown_error": "Unknown error"
+  },
   "add_proxy_btn": "Add Proxy",
   "controls": {
     "found": "proxies found",
