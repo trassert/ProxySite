@@ -35,16 +35,17 @@ logger.add(
     filter=lambda record: record["extra"].get("log_type") != "http",
 )
 
-access_log_path = Path(config.logging.access_file)
-access_log_path.parent.mkdir(parents=True, exist_ok=True)
-logger.add(
-    str(access_log_path),
-    level=config.logging.access_level,
-    rotation=config.logging.access_rotation,
-    retention=config.logging.access_retention,
-    enqueue=True,
-    format="{time:YYYY-MM-DD HH:mm:ss} | {message}",
-    filter=lambda record: record["extra"].get("log_type") == "http",
-)
+if config.logging.access_log:
+    access_log_path = Path(config.logging.access_file)
+    access_log_path.parent.mkdir(parents=True, exist_ok=True)
+    logger.add(
+        str(access_log_path),
+        level=config.logging.access_level,
+        rotation=config.logging.access_rotation,
+        retention=config.logging.access_retention,
+        enqueue=True,
+        format="{time:YYYY-MM-DD HH:mm:ss} | {message}",
+        filter=lambda record: record["extra"].get("log_type") == "http",
+    )
 
 access_logger = logger.bind(log_type="http")
