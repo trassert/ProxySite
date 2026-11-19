@@ -78,16 +78,15 @@ class RateLimiter(BaseHTTPMiddleware):
 
         # Check limit
         if len(dq) >= limit:
-            # Throttle logging: log at most once per 10 seconds per IP
-            last_log_key = f"log:{client_ip}:{path}"
-            last_log_time = cache_store.get(last_log_key)
-            if last_log_time is None:
+            # Throttle logging: log at most once per 60s per IP, regardless of path
+            last_log_key = f"ratelog:{client_ip}"
+            if cache_store.get(last_log_key) is None:
                 logger.warning(
                     "Rate limit exceeded for {client} on {path}",
                     client=client_ip,
                     path=path,
                 )
-                cache_store.set(last_log_key, current_time, ttl_seconds=10)
+                cache_store.set(last_log_key, current_time, ttl_seconds=60)
 
             return Response(
                 content=json.dumps({"detail": config.messages.rate_limit_exceeded}),
